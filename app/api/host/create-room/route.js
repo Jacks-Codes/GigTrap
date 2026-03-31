@@ -3,6 +3,6 @@ import { getGameStore } from '../../../../lib/server/gameStore';
 
 export async function POST() {
   const store = getGameStore();
-  const result = store.createRoom();
+  const result = await store.createRoom();
   return NextResponse.json(result);
 }

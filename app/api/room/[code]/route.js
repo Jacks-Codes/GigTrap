@@ -4,7 +4,7 @@ import { getGameStore } from '../../../../lib/server/gameStore';
 export async function GET(_, { params }) {
   const { code } = await params;
   const store = getGameStore();
-  const snapshot = store.getRoomSnapshot(code);
+  const snapshot = await store.getRoomSnapshot(code);
 
   if (!snapshot) {
     return NextResponse.json({ error: 'Room not found' }, { status: 404 });

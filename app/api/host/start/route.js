@@ -4,7 +4,7 @@ import { getGameStore } from '../../../../lib/server/gameStore';
 export async function POST(request) {
   const { code, hostToken } = await request.json();
   const store = getGameStore();
-  const result = store.startGame(code, hostToken);
+  const result = await store.startGame(code, hostToken);
 
   if (result.error) {
     return NextResponse.json(result, { status: 401 });

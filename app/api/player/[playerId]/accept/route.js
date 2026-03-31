@@ -5,7 +5,7 @@ export async function POST(request, { params }) {
   const { playerId } = await params;
   const { code, token, requestId } = await request.json();
   const store = getGameStore();
-  const result = store.acceptRide(code, playerId, token, requestId);
+  const result = await store.acceptRide(code, playerId, token, requestId);
 
   if (result.error) {
     return NextResponse.json(result, { status: 400 });

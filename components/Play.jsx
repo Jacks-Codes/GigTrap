@@ -18,31 +18,38 @@ function CountdownArc({ durationMs, remainingMs, size = 120 }) {
   const safeDuration = Math.max(1, durationMs || 1);
   const clampedRemaining = Math.max(0, remainingMs || 0);
   const fraction = clampedRemaining / safeDuration;
-  const radius = (size - 10) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference * (1 - fraction);
+  const angle = Math.max(0, Math.min(360, fraction * 360));
   const seconds = (clampedRemaining / 1000).toFixed(1);
   const color = fraction > 0.5 ? '#000' : fraction > 0.25 ? '#6e6e73' : '#d33b31';
 
   return (
-    <svg width={size} height={size} style={{ display: 'block', margin: '0 auto' }}>
-      <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#d9d9de" strokeWidth="8" />
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
-        fill="none"
-        stroke={color}
-        strokeWidth="8"
-        strokeDasharray={circumference}
-        strokeDashoffset={offset}
-        strokeLinecap="round"
-        transform={`rotate(-90 ${size / 2} ${size / 2})`}
-      />
-      <text x={size / 2} y={size / 2 + 10} textAnchor="middle" fill="#111" fontSize="28" fontWeight="700">
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        display: 'grid',
+        placeItems: 'center',
+        margin: '0 auto',
+        background: `conic-gradient(${color} ${angle}deg, #d9d9de ${angle}deg 360deg)`,
+      }}
+    >
+      <div
+        style={{
+          width: size - 16,
+          height: size - 16,
+          borderRadius: '50%',
+          background: '#fff',
+          display: 'grid',
+          placeItems: 'center',
+          color: '#111',
+          fontSize: 28,
+          fontWeight: 700,
+        }}
+      >
         {seconds}
-      </text>
-    </svg>
+      </div>
+    </div>
   );
 }
 

@@ -7,7 +7,7 @@ export async function GET(request, { params }) {
   const code = searchParams.get('code');
   const token = searchParams.get('token');
   const store = getGameStore();
-  const result = store.getPlayerState(code, playerId, token);
+  const result = await store.getPlayerState(code, playerId, token);
 
   if (!result) {
     return NextResponse.json({ error: 'Player not found' }, { status: 404 });
