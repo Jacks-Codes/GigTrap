@@ -2,7 +2,7 @@ function randomBetween(min, max) {
   return Math.random() * (max - min) + min;
 }
 
-const TIME_COMPRESSION = 10;
+const TIME_COMPRESSION = 8;
 
 function weightedPick(entries) {
   const totalWeight = entries.reduce((sum, entry) => sum + entry.weight, 0);
