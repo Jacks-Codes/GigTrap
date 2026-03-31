@@ -14,7 +14,7 @@ function getSocket() {
 }
 
 export function useSocket() {
-  const [connected, setConnected] = useState(false);
+  const [connected, setConnected] = useState(() => getSocket().connected);
 
   useEffect(() => {
     const s = getSocket();
@@ -24,10 +24,6 @@ export function useSocket() {
 
     s.on('connect', onConnect);
     s.on('disconnect', onDisconnect);
-
-    // If already connected, set state immediately
-    if (s.connected) setConnected(true);
-
     return () => {
       s.off('connect', onConnect);
       s.off('disconnect', onDisconnect);
