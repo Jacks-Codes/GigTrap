@@ -1,5 +1,7 @@
 const express = require('express');
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const {
@@ -28,16 +30,23 @@ const {
   pushHostUpdates,
   sanitizePlayer,
   setEngagementState,
-  syncSimulatedTime,
 } = require('./rideEngine');
 
 const app = express();
-app.use(cors());
+const FRONTEND_DIST = path.join(__dirname, '..', 'frontend', 'dist');
+const hasFrontendDist = fs.existsSync(FRONTEND_DIST);
+const allowedOrigin = process.env.CORS_ORIGIN || '*';
+
+app.use(cors({ origin: allowedOrigin === '*' ? true : allowedOrigin }));
 app.use(express.json());
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*', methods: ['GET', 'POST'] },
+  cors: { origin: allowedOrigin === '*' ? true : allowedOrigin, methods: ['GET', 'POST'] },
+});
+
+app.get('/health', (_, res) => {
+  res.json({ ok: true });
 });
 
 // REST endpoint for aggregate stats
@@ -46,6 +55,14 @@ app.get('/room/:code/stats', (req, res) => {
   if (!room) return res.status(404).json({ error: 'Room not found' });
   res.json(getAggregateStats(room));
 });
+
+if (hasFrontendDist) {
+  app.use(express.static(FRONTEND_DIST));
+
+  app.get(/^(?!\/room\/|\/health).*/, (_, res) => {
+    res.sendFile(path.join(FRONTEND_DIST, 'index.html'));
+  });
+}
 
 io.on('connection', (socket) => {
   console.log(`Connected: ${socket.id}`);
@@ -309,6 +326,7 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-  console.log(`GigTrap backend running on port ${PORT}`);
+const HOST = process.env.HOST || '0.0.0.0';
+server.listen(PORT, HOST, () => {
+  console.log(`GigTrap backend running on http://${HOST}:${PORT}`);
 });
