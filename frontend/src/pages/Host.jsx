@@ -43,11 +43,16 @@ export default function Host() {
       addLog(`${data.name} submitted: "${data.answer}"`);
     });
 
+    socket.on('host:player_update', (data) => {
+      setPlayers(data.players);
+    });
+
     return () => {
       socket.off('room:player_joined');
       socket.off('room:player_left');
       socket.off('host:aggregate_update');
       socket.off('host:stat_submitted');
+      socket.off('host:player_update');
     };
   }, [socket, addLog]);
 
@@ -84,6 +89,15 @@ export default function Host() {
     });
   };
 
+  const resumeGame = () => {
+    socket.emit('host:resume_game', { code: roomCode, hostToken }, (res) => {
+      if (res.success) {
+        setPhase('running');
+        addLog('Game resumed — ride loops restarted');
+      }
+    });
+  };
+
   const endGame = () => {
     socket.emit('host:end_game', { code: roomCode, hostToken }, (res) => {
       if (res.success) {
@@ -108,6 +122,7 @@ export default function Host() {
           <div style={{ marginBottom: 10 }}>
             <button onClick={startGame} disabled={phase !== 'lobby'}>Start Game</button>{' '}
             <button onClick={showStats} disabled={phase === 'lobby'}>Show Stats</button>{' '}
+            <button onClick={resumeGame} disabled={phase !== 'stat_screen'}>Resume Game</button>{' '}
             <button onClick={endGame} disabled={phase === 'ended'}>End Game</button>
           </div>
 
@@ -136,7 +151,7 @@ export default function Host() {
           <table border="1" cellPadding="5" style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th>Name</th><th>Earnings</th><th>Rating</th><th>Strain</th><th>Accept%</th><th>Deactivated</th>
+                <th>Name</th><th>Earnings</th><th>Rating</th><th>Strain</th><th>Accept%</th><th>Rides</th><th>Misses</th><th>Deactivated</th>
               </tr>
             </thead>
             <tbody>
@@ -147,6 +162,8 @@ export default function Host() {
                   <td>{p.rating}</td>
                   <td>{p.strainLevel}</td>
                   <td>{p.acceptanceRate}%</td>
+                  <td>{p.ridesCompleted || 0}</td>
+                  <td>{p.consecutiveMisses || 0}</td>
                   <td>{p.isDeactivated ? 'YES' : 'no'}</td>
                 </tr>
               ))}
