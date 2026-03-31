@@ -455,9 +455,24 @@ export default function Play() {
             />
           </div>
 
-          <div style={{ position: 'relative', height: 372, borderRadius: 34, overflow: 'hidden', background: '#dddcd8', border: '1px solid #e1e1e1', boxShadow: '0 25px 50px rgba(17,17,17,0.08)' }}>
-            <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)', backgroundSize: '54px 54px' }} />
+          <div style={{ position: 'relative', height: 372, borderRadius: 34, overflow: 'hidden', background: '#deddd8', border: '1px solid #e1e1e1', boxShadow: '0 25px 50px rgba(17,17,17,0.08)' }}>
             <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 25% 18%, rgba(255,255,255,0.9), transparent 26%), radial-gradient(circle at 72% 70%, rgba(255,255,255,0.45), transparent 22%)' }} />
+            <svg viewBox="0 0 420 372" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+              <rect width="420" height="372" fill="transparent" />
+              <path d="M-20 92 C70 116, 120 144, 214 124 S356 78, 450 110" fill="none" stroke="#c3c4c8" strokeWidth="34" strokeLinecap="round" />
+              <path d="M-20 92 C70 116, 120 144, 214 124 S356 78, 450 110" fill="none" stroke="#f9f9f7" strokeWidth="24" strokeLinecap="round" />
+              <path d="M228 -30 C214 54, 198 110, 190 188 S176 316, 194 408" fill="none" stroke="#c8c9cd" strokeWidth="30" strokeLinecap="round" />
+              <path d="M228 -30 C214 54, 198 110, 190 188 S176 316, 194 408" fill="none" stroke="#fafaf8" strokeWidth="20" strokeLinecap="round" />
+              <path d="M44 276 C132 258, 210 246, 316 272 S404 304, 452 300" fill="none" stroke="#cbccd0" strokeWidth="22" strokeLinecap="round" />
+              <path d="M44 276 C132 258, 210 246, 316 272 S404 304, 452 300" fill="none" stroke="#f7f7f4" strokeWidth="14" strokeLinecap="round" />
+              <path d="M84 16 C116 74, 124 126, 128 186" fill="none" stroke="#cfd0d3" strokeWidth="16" strokeLinecap="round" />
+              <path d="M84 16 C116 74, 124 126, 128 186" fill="none" stroke="#fbfbf9" strokeWidth="10" strokeLinecap="round" />
+              <path d="M304 40 C284 106, 298 158, 344 214" fill="none" stroke="#d1d2d5" strokeWidth="18" strokeLinecap="round" />
+              <path d="M304 40 C284 106, 298 158, 344 214" fill="none" stroke="#fbfbf8" strokeWidth="11" strokeLinecap="round" />
+              <circle cx="118" cy="236" r="36" fill="rgba(148, 170, 120, 0.18)" />
+              <circle cx="334" cy="116" r="30" fill="rgba(148, 170, 120, 0.14)" />
+              <circle cx="328" cy="294" r="26" fill="rgba(148, 170, 120, 0.12)" />
+            </svg>
             <div style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,0.88)', borderRadius: 16, padding: '10px 12px', boxShadow: '0 12px 24px rgba(17,17,17,0.1)' }}>
               <div style={{ fontSize: 11, color: '#6c7076', textTransform: 'uppercase', letterSpacing: 1 }}>Status</div>
               <div style={{ fontWeight: 700, marginTop: 4 }}>{trip ? 'Trip in progress' : 'You are online'}</div>
@@ -465,11 +480,12 @@ export default function Play() {
             <div style={{ position: 'absolute', top: 80, left: 22, background: 'rgba(255,255,255,0.92)', borderRadius: 999, padding: '8px 12px', fontSize: 12, fontWeight: 700, boxShadow: '0 10px 24px rgba(17,17,17,0.08)' }}>Downtown</div>
             <div style={{ position: 'absolute', top: 182, right: 32, background: 'rgba(255,255,255,0.92)', borderRadius: 999, padding: '8px 12px', fontSize: 12, fontWeight: 700, boxShadow: '0 10px 24px rgba(17,17,17,0.08)' }}>Airport</div>
             <div style={{ position: 'absolute', bottom: 78, left: 30, background: 'rgba(255,255,255,0.92)', borderRadius: 999, padding: '8px 12px', fontSize: 12, fontWeight: 700, boxShadow: '0 10px 24px rgba(17,17,17,0.08)' }}>Stadium</div>
-            <div style={{ position: 'absolute', top: 54, left: 38, width: 120, height: 6, background: '#b9b9bf', transform: 'rotate(14deg)', borderRadius: 999 }} />
-            <div style={{ position: 'absolute', top: 132, left: 124, width: 180, height: 6, background: '#c5c5cb', transform: 'rotate(-19deg)', borderRadius: 999 }} />
-            <div style={{ position: 'absolute', top: 235, left: 54, width: 210, height: 6, background: '#c0c0c6', transform: 'rotate(10deg)', borderRadius: 999 }} />
-            <div style={{ position: 'absolute', top: 146, left: '48%', width: 22, height: 22, borderRadius: 999, background: '#111', boxShadow: '0 0 0 10px rgba(17,17,17,0.08)', display: 'grid', placeItems: 'center' }}>
-              <div style={{ width: 8, height: 8, background: '#fff', borderRadius: 999 }} />
+            <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: 72, height: 72, borderRadius: '50%', background: 'rgba(17,17,17,0.08)', display: 'grid', placeItems: 'center' }}>
+              <div style={{ position: 'relative', width: 34, height: 34, borderRadius: '50%', background: '#111', boxShadow: '0 10px 24px rgba(17,17,17,0.2)' }}>
+                <div style={{ position: 'absolute', left: '50%', top: -10, transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderBottom: '12px solid #111' }} />
+                <div style={{ position: 'absolute', inset: 8, borderRadius: '50%', background: '#fff' }} />
+                <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: 8, height: 8, borderRadius: '50%', background: '#111' }} />
+              </div>
             </div>
             {surgeState && (
               <>
