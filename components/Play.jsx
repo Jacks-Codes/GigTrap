@@ -92,6 +92,7 @@ export default function Play() {
   const [ratingDropCard, setRatingDropCard] = useState(null);
   const [questOffer, setQuestOffer] = useState(null);
   const [quizPrompt, setQuizPrompt] = useState(null);
+  const [maintenanceFeeModal, setMaintenanceFeeModal] = useState(null);
   const [learnMoreOpen, setLearnMoreOpen] = useState(false);
   const [appealSubmitted, setAppealSubmitted] = useState(false);
   const [appealText, setAppealText] = useState('');
@@ -103,6 +104,7 @@ export default function Play() {
   const lastQuestRef = useRef(null);
   const lastRatingDropRef = useRef(null);
   const lastQuizRef = useRef(null);
+  const lastMaintenanceFeeRef = useRef(null);
   const phase = payload?.phase || 'lobby';
 
   useEffect(() => {
@@ -201,6 +203,13 @@ export default function Play() {
         setQuizPrompt(null);
       }
 
+      const maintEventId = data.player?.pendingMaintenanceFee?.eventId || null;
+      if (maintEventId && maintEventId !== lastMaintenanceFeeRef.current) {
+        setMaintenanceFeeModal(data.player.pendingMaintenanceFee);
+      } else if (!maintEventId) {
+        setMaintenanceFeeModal(null);
+      }
+
       setPayload(data);
       setSession(data.player);
       setClockOffsetMs((data.serverNow || Date.now()) - Date.now());
@@ -211,6 +220,7 @@ export default function Play() {
       lastQuestRef.current = questEventId;
       lastRatingDropRef.current = ratingEventId;
       lastQuizRef.current = quizEventId;
+      lastMaintenanceFeeRef.current = maintEventId;
     };
 
     poll();
@@ -362,6 +372,22 @@ export default function Play() {
     setQuizPrompt(null);
     applyResponseState(data.state);
     setToast(data.correct ? `Correct. +${formatMoney(data.reward)} and a rating bump.` : 'Wrong. Rating decreased.');
+  };
+
+  const acknowledgeMaintenanceFee = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    const res = await fetch(`/api/player/${session.playerId}/acknowledge-maintenance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: roomCode, token: session.playerToken }),
+    });
+    const data = await res.json();
+    setSubmitting(false);
+    if (!res.ok || data.error) return;
+    setMaintenanceFeeModal(null);
+    lastMaintenanceFeeRef.current = null;
+    applyResponseState(data.state);
   };
 
   const handleGoOffline = async () => {
@@ -642,6 +668,29 @@ export default function Play() {
                   {appealSubmitted && <div style={{ marginTop: 10, color: '#c8c8cc' }}>Your appeal has been received. You will be notified by email.</div>}
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {maintenanceFeeModal && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(17,17,17,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 45 }}>
+            <div style={{ width: '100%', maxWidth: 370, background: '#fff', borderRadius: 30, padding: 24, boxShadow: '0 35px 60px rgba(17,17,17,0.22)' }}>
+              <div style={{ fontSize: 12, color: '#c0392b', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700 }}>Vehicle Issue</div>
+              <div style={{ fontSize: 30, lineHeight: 1.05, fontWeight: 700, marginTop: 10 }}>{maintenanceFeeModal.issue}</div>
+              <div style={{ color: '#70757a', marginTop: 10, lineHeight: 1.5 }}>
+                A required repair has been identified on your vehicle. The cost has been automatically deducted from your earnings.
+              </div>
+              <div style={{ marginTop: 16, background: '#fdf2f2', border: '1px solid #f5c6c6', borderRadius: 16, padding: '14px 16px' }}>
+                <div style={{ fontSize: 13, color: '#c0392b', textTransform: 'uppercase', letterSpacing: 0.8 }}>Amount deducted</div>
+                <div style={{ fontSize: 36, fontWeight: 700, color: '#c0392b', marginTop: 4 }}>-${maintenanceFeeModal.amount.toFixed(2)}</div>
+              </div>
+              <button
+                onClick={acknowledgeMaintenanceFee}
+                disabled={submitting}
+                style={{ width: '100%', marginTop: 20, border: 'none', borderRadius: 16, background: '#111', color: '#fff', padding: '15px 12px', cursor: submitting ? 'default' : 'pointer', fontWeight: 700, fontSize: 16 }}
+              >
+                Acknowledge
+              </button>
             </div>
           </div>
         )}
