@@ -1,23 +1,38 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
+// Singleton socket — shared across all components/routes
+let socket = null;
+
+function getSocket() {
+  if (!socket) {
+    socket = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
+  }
+  return socket;
+}
+
 export function useSocket() {
-  const socketRef = useRef(null);
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    const socket = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
-    socketRef.current = socket;
+    const s = getSocket();
 
-    socket.on('connect', () => setConnected(true));
-    socket.on('disconnect', () => setConnected(false));
+    const onConnect = () => setConnected(true);
+    const onDisconnect = () => setConnected(false);
+
+    s.on('connect', onConnect);
+    s.on('disconnect', onDisconnect);
+
+    // If already connected, set state immediately
+    if (s.connected) setConnected(true);
 
     return () => {
-      socket.disconnect();
+      s.off('connect', onConnect);
+      s.off('disconnect', onDisconnect);
     };
   }, []);
 
-  return { socket: socketRef.current, connected };
+  return { socket: getSocket(), connected };
 }
