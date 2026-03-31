@@ -30,6 +30,7 @@ export default function Host() {
   const [aggregate, setAggregate] = useState(null);
   const [phase, setPhase] = useState('lobby');
   const [log, setLog] = useState([]);
+  const [copied, setCopied] = useState(false);
 
   const addLog = useCallback((message) => {
     setLog((prev) => [`[${new Date().toLocaleTimeString()}] ${message}`, ...prev].slice(0, 60));
@@ -121,6 +122,22 @@ export default function Host() {
     });
   };
 
+  const joinUrl = roomCode ? `${window.location.origin}/join?code=${roomCode}` : '';
+  const qrUrl = joinUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(joinUrl)}`
+    : '';
+
+  const copyJoinUrl = async () => {
+    if (!joinUrl) return;
+    try {
+      await navigator.clipboard.writeText(joinUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      addLog('Could not copy join URL');
+    }
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: '#f4f4f2', color: '#111', fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', padding: 24 }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
@@ -155,11 +172,27 @@ export default function Host() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
-                <Metric label="Players" value={aggregate?.playerCount ?? players.length} />
-                <Metric label="Avg Hourly" value={`$${aggregate?.avgHourlyRate ?? 0}/hr`} />
-                <Metric label="Deactivated" value={aggregate?.deactivatedCount ?? 0} />
-                <Metric label="Active Quests" value={aggregate?.activeQuestCount ?? 0} />
+              <div style={{ display: 'grid', gap: 12 }}>
+                <div style={{ background: '#fff', border: '1px solid #e5e5e5', borderRadius: 24, padding: 16 }}>
+                  <div style={{ fontSize: 12, color: '#6b6b6b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Join on phones</div>
+                  <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                    <img src={qrUrl} alt="QR code for joining the room" style={{ width: 108, height: 108, borderRadius: 16, border: '1px solid #ececec', background: '#fff' }} />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, color: '#6b6b6b', marginBottom: 6 }}>Scan to open the join page with the room code prefilled.</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, wordBreak: 'break-all' }}>{joinUrl}</div>
+                      <button onClick={copyJoinUrl} style={{ ...miniButton, marginTop: 10 }}>
+                        {copied ? 'Copied' : 'Copy link'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+                  <Metric label="Players" value={aggregate?.playerCount ?? players.length} />
+                  <Metric label="Avg Hourly" value={`$${aggregate?.avgHourlyRate ?? 0}/hr`} />
+                  <Metric label="Deactivated" value={aggregate?.deactivatedCount ?? 0} />
+                  <Metric label="Active Quests" value={aggregate?.activeQuestCount ?? 0} />
+                </div>
               </div>
             </div>
 

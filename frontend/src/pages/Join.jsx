@@ -4,7 +4,11 @@ import { useSocket } from '../hooks/useSocket';
 
 export default function Join() {
   const { socket, connected } = useSocket();
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState(() => {
+    const search = new URLSearchParams(window.location.search);
+    const codeFromUrl = search.get('code');
+    return codeFromUrl ? codeFromUrl.toUpperCase() : '';
+  });
   const [name, setName] = useState('');
   const [error, setError] = useState(null);
   const navigate = useNavigate();
