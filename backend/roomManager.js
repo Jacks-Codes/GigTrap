@@ -65,9 +65,11 @@ function getAggregateStats(room) {
     return {
       playerCount: 0,
       avgEarnings: 0,
+      avgHourlyRate: 0,
       avgStrain: 0,
       avgRating: 0,
       deactivatedCount: 0,
+      activeQuestCount: 0,
       earningsDistribution: [],
     };
   }
@@ -75,9 +77,13 @@ function getAggregateStats(room) {
   return {
     playerCount: players.length,
     avgEarnings: parseFloat((earnings.reduce((a, b) => a + b, 0) / players.length).toFixed(2)),
+    avgHourlyRate: parseFloat(
+      (players.reduce((sum, player) => sum + (player.effectiveHourlyRate || 0), 0) / players.length).toFixed(2)
+    ),
     avgStrain: parseFloat((players.reduce((a, p) => a + p.strainLevel, 0) / players.length).toFixed(1)),
     avgRating: parseFloat((players.reduce((a, p) => a + p.rating, 0) / players.length).toFixed(2)),
     deactivatedCount: players.filter((p) => p.isDeactivated).length,
+    activeQuestCount: players.filter((p) => p.quest?.accepted && p.quest?.active).length,
     earningsDistribution: earnings.sort((a, b) => a - b),
   };
 }

@@ -14,12 +14,20 @@ const {
 const { createPlayerState } = require('./playerState');
 const { handleEvent } = require('./events');
 const {
+  emitPlayerState,
+  forceDeactivation,
+  getPublicPlayerState,
   startRideLoop,
   stopRideLoop,
   stopAllRideLoops,
   handleAccept,
   handleDecline,
+  liftDeactivation,
+  markMechanic,
+  pushHostUpdates,
   sanitizePlayer,
+  setEngagementState,
+  syncSimulatedTime,
 } = require('./rideEngine');
 
 const app = express();
@@ -61,9 +69,12 @@ io.on('connection', (socket) => {
     // Start ride loops for all connected players
     for (const [socketId, player] of room.players) {
       player.gameStartedAt = Date.now();
+      setEngagementState(player, 'idle', Date.now());
+      emitPlayerState(io, socketId, player);
       startRideLoop(io, room, socketId);
     }
 
+    pushHostUpdates(io, room);
     cb?.({ success: true });
   });
 
@@ -80,9 +91,14 @@ io.on('connection', (socket) => {
     const room = getRoom(code);
     if (!room || room.hostToken !== hostToken) return cb?.({ error: 'Unauthorized' });
     room.phase = 'stat_screen';
+    for (const [socketId, player] of room.players.entries()) {
+      syncSimulatedTime(player);
+      emitPlayerState(io, socketId, player);
+    }
     stopAllRideLoops(room);
     const stats = getAggregateStats(room);
     io.to(code).emit('game:stat_screen', stats);
+    pushHostUpdates(io, room);
     cb?.({ success: true, stats });
   });
 
@@ -91,9 +107,14 @@ io.on('connection', (socket) => {
     if (!room || room.hostToken !== hostToken) return cb?.({ error: 'Unauthorized' });
     room.phase = 'running';
     io.to(code).emit('game:started', { phase: 'running' });
-    for (const socketId of room.players.keys()) {
+    for (const [socketId, player] of room.players.entries()) {
+      if (!player.isDeactivated) {
+        setEngagementState(player, 'idle', Date.now());
+        emitPlayerState(io, socketId, player);
+      }
       startRideLoop(io, room, socketId);
     }
+    pushHostUpdates(io, room);
     cb?.({ success: true });
   });
 
@@ -101,9 +122,28 @@ io.on('connection', (socket) => {
     const room = getRoom(code);
     if (!room || room.hostToken !== hostToken) return cb?.({ error: 'Unauthorized' });
     room.phase = 'ended';
+    for (const [socketId, player] of room.players.entries()) {
+      syncSimulatedTime(player);
+      emitPlayerState(io, socketId, player);
+    }
     stopAllRideLoops(room);
     io.to(code).emit('game:ended', getAggregateStats(room));
+    pushHostUpdates(io, room);
     cb?.({ success: true });
+  });
+
+  socket.on('host:lift_deactivation', ({ code, hostToken, socketId }, cb) => {
+    const room = getRoom(code);
+    if (!room || room.hostToken !== hostToken) return cb?.({ error: 'Unauthorized' });
+    const lifted = liftDeactivation(io, room, socketId);
+    cb?.({ success: lifted });
+  });
+
+  socket.on('host:deactivate_player', ({ code, hostToken, socketId }, cb) => {
+    const room = getRoom(code);
+    if (!room || room.hostToken !== hostToken) return cb?.({ error: 'Unauthorized' });
+    const deactivated = forceDeactivation(io, room, socketId, 'host_targeted');
+    cb?.({ success: deactivated });
   });
 
   // ---- Player events ----
@@ -124,19 +164,23 @@ io.on('connection', (socket) => {
 
     console.log(`Player "${name}" joined room ${roomCode}`);
 
-    cb?.({ success: true, state });
+    cb?.({ success: true, state: getPublicPlayerState(state) });
 
     // Notify host
     if (room.hostSocketId) {
       io.to(room.hostSocketId).emit('room:player_joined', {
         name,
         playerCount: getPlayerCount(room),
-        players: Array.from(room.players.values()).map(sanitizePlayer),
+        players: Array.from(room.players.entries()).map(([playerSocketId, player]) =>
+          sanitizePlayer(playerSocketId, player)
+        ),
       });
     }
 
     // If game is already running, start their ride loop
     if (room.phase === 'running' || room.phase === 'event') {
+      setEngagementState(state, 'idle', Date.now());
+      emitPlayerState(io, socket.id, state);
       startRideLoop(io, room, socket.id);
     }
   });
@@ -161,6 +205,66 @@ io.on('connection', (socket) => {
     if (!room) return cb?.({ error: 'Not in a room' });
     const result = handleDecline(io, room, socket.id, requestId, true);
     cb?.(result);
+  });
+
+  socket.on('quest:respond', ({ accepted }, cb) => {
+    const room = getRoomByPlayerSocket(socket.id);
+    if (!room) return cb?.({ error: 'Not in a room' });
+    const player = room.players.get(socket.id);
+    if (!player?.quest) return cb?.({ error: 'No quest offer available' });
+
+    if (accepted) {
+      player.quest.accepted = true;
+      player.quest.active = true;
+      player.quest.ridesCompleted = 0;
+      player.quest.hiddenReductionTotal = 0;
+      player.quest.expiresAt = Date.now() + 180000;
+      markMechanic(player, 'quest_bonus_trap');
+      player.strainLevel = Math.min(100, player.strainLevel + 8);
+    } else {
+      player.quest = null;
+    }
+
+    emitPlayerState(io, socket.id, player);
+    pushHostUpdates(io, room);
+    cb?.({ success: true, state: getPublicPlayerState(player) });
+  });
+
+  socket.on('player:dismiss_pay_info', (cb) => {
+    const room = getRoomByPlayerSocket(socket.id);
+    if (!room) return cb?.({ error: 'Not in a room' });
+    const player = room.players.get(socket.id);
+    if (!player) return cb?.({ error: 'Player not found' });
+
+    player.showPayInfoPrompt = false;
+    emitPlayerState(io, socket.id, player);
+    cb?.({ success: true });
+  });
+
+  socket.on('player:go_offline_attempt', (_, cb) => {
+    const room = getRoomByPlayerSocket(socket.id);
+    if (!room) return cb?.({ error: 'Not in a room' });
+    const player = room.players.get(socket.id);
+    if (!player) return cb?.({ error: 'Player not found' });
+
+    let message = 'Your acceptance rate may be affected if you go offline during peak hours.';
+    if (player.pendingRequest) {
+      message = 'You have a ride request waiting.';
+    } else if (player.quest?.accepted && player.quest.active) {
+      const ridesLeft = Math.max(0, player.quest.ridesRequired - player.quest.ridesCompleted);
+      const dollarsAway = Math.max(0, player.quest.bonus - Math.round((player.quest.hiddenReductionTotal || 0) * 10) / 10);
+      message = ridesLeft > 0
+        ? `You are ${ridesLeft} rides away from your Quest bonus.`
+        : `You are $${dollarsAway.toFixed(0)} away from your Quest bonus.`;
+    } else if (player.strainLevel >= 60) {
+      message = 'Your acceptance rate may be affected if you go offline during peak hours.';
+    }
+
+    player.strainLevel = Math.min(100, player.strainLevel + (player.strainLevel >= 60 ? 4 : 2));
+    markMechanic(player, 'income_targeting_trap');
+    emitPlayerState(io, socket.id, player);
+    pushHostUpdates(io, room);
+    cb?.({ success: true, message });
   });
 
   socket.on('player:submit_stat', ({ answer }, cb) => {
@@ -205,6 +309,7 @@ io.on('connection', (socket) => {
           name: player?.name,
           playerCount: getPlayerCount(playerRoom),
         });
+        pushHostUpdates(io, playerRoom);
       }
     }
   });

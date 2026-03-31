@@ -1,4 +1,11 @@
 const { randomBetween } = require('./playerState');
+const {
+  applyRatingHit,
+  emitPlayerState,
+  forceDeactivation,
+  markMechanic,
+  pushHostUpdates,
+} = require('./rideEngine');
 
 const EVENT_TYPES = {
   phantom_surge: {
@@ -9,16 +16,28 @@ const EVENT_TYPES = {
     name: 'Rating Drop',
   },
   quest_offer: {
-    name: 'Quest Offer',
+    name: 'Quest Bonus Trap',
   },
   deactivation_warning: {
-    name: 'Deactivation Warning',
-  },
-  fare_drought: {
-    name: 'Fare Drought',
-    duration: 60000,
+    name: 'Account Review',
   },
 };
+
+function getRandomSubset(entries) {
+  if (entries.length === 0) return [];
+  const shuffled = [...entries].sort(() => Math.random() - 0.5);
+  const subsetSize = Math.max(1, Math.ceil(entries.length * randomBetween(0.25, 0.5)));
+  return shuffled.slice(0, subsetSize);
+}
+
+function createQuestOffer() {
+  return {
+    ridesRequired: 8,
+    bonus: 45,
+    durationSeconds: 1800,
+    fareReductionMultiplier: parseFloat(randomBetween(0.8, 0.85).toFixed(2)),
+  };
+}
 
 function handleEvent(io, room, eventType) {
   const eventDef = EVENT_TYPES[eventType];
@@ -31,75 +50,96 @@ function handleEvent(io, room, eventType) {
       const surgeData = {
         type: 'phantom_surge',
         name: eventDef.name,
-        surgeMultiplier: parseFloat(randomBetween(1.5, 3.0).toFixed(1)),
-        zone: `Zone ${Math.floor(randomBetween(1, 9))}`,
+        surgeMultiplier: parseFloat(randomBetween(1.9, 2.3).toFixed(1)),
+        zone: `Zone ${Math.floor(randomBetween(2, 8))}`,
       };
-      io.to(room.code).emit('game:event', surgeData);
+
+      for (const [socketId, player] of room.players.entries()) {
+        if (player.isDeactivated) continue;
+        if (player.engagementState === 'on_trip') continue;
+        markMechanic(player, 'phantom_surge');
+        io.to(socketId).emit('game:event', { ...surgeData, available: true });
+      }
+
       const timer = setTimeout(() => {
         room.currentEvent = null;
-        io.to(room.code).emit('game:event_expired', { type: 'phantom_surge' });
+        room.phase = 'running';
+        io.to(room.code).emit('game:event_expired', {
+          type: 'phantom_surge',
+          message: 'Surge has ended in your area',
+        });
       }, eventDef.duration);
+
       room.timers.push(timer);
       return surgeData;
     }
 
     case 'rating_drop': {
-      for (const [socketId, player] of room.players) {
+      for (const [socketId, player] of room.players.entries()) {
         if (player.isDeactivated) continue;
-        const drop = parseFloat(randomBetween(0.2, 0.5).toFixed(2));
-        player.rating = parseFloat(Math.max(1.0, player.rating - drop).toFixed(2));
-        player.strainLevel = Math.min(100, player.strainLevel + Math.floor(randomBetween(5, 15)));
-        io.to(socketId).emit('player:state_update', { ...player });
+        const result = applyRatingHit(player);
+        emitPlayerState(io, socketId, player);
+        io.to(socketId).emit('game:event', {
+          type: 'rating_drop',
+          name: eventDef.name,
+          oldRating: result.oldRating,
+          newRating: result.newRating,
+          reviewStars: result.reviewStars,
+          reviewText: 'Passenger commented: ride experience',
+        });
       }
+
       room.currentEvent = null;
-      io.to(room.code).emit('game:event', { type: 'rating_drop', name: eventDef.name });
+      room.phase = 'running';
+      pushHostUpdates(io, room);
       return { type: 'rating_drop' };
     }
 
     case 'quest_offer': {
-      const questData = {
-        type: 'quest_offer',
-        name: eventDef.name,
-        ridesRequired: Math.floor(randomBetween(3, 8)),
-        bonus: parseFloat(randomBetween(5, 25).toFixed(2)),
-      };
-      io.to(room.code).emit('game:event', questData);
-      return questData;
+      const offer = createQuestOffer();
+      for (const [socketId, player] of room.players.entries()) {
+        if (player.isDeactivated) continue;
+        player.quest = {
+          ...offer,
+          accepted: false,
+          active: false,
+          ridesCompleted: 0,
+          hiddenReductionTotal: 0,
+          expiresAt: null,
+        };
+        io.to(socketId).emit('game:event', {
+          type: 'quest_offer',
+          name: eventDef.name,
+          ridesRequired: offer.ridesRequired,
+          bonus: offer.bonus,
+          durationSeconds: offer.durationSeconds,
+        });
+        emitPlayerState(io, socketId, player);
+      }
+
+      room.currentEvent = null;
+      room.phase = 'running';
+      pushHostUpdates(io, room);
+      return { type: 'quest_offer', ...offer };
     }
 
     case 'deactivation_warning': {
-      for (const [socketId, player] of room.players) {
-        if (player.rating < 4.6 && !player.isDeactivated) {
-          player.strainLevel = Math.min(100, player.strainLevel + 20);
-          io.to(socketId).emit('game:event', {
-            type: 'deactivation_warning',
-            name: eventDef.name,
-            personal: true,
-          });
-          io.to(socketId).emit('player:state_update', { ...player });
-        }
-      }
-      room.currentEvent = null;
-      return { type: 'deactivation_warning' };
-    }
+      const players = Array.from(room.players.entries()).filter(([, player]) => !player.isDeactivated);
+      const lowRated = players.filter(([, player]) => player.rating < 4.6);
+      const targets = lowRated.length > 0 ? lowRated : getRandomSubset(players);
 
-    case 'fare_drought': {
-      for (const [, player] of room.players) {
-        player.drought = true;
+      for (const [socketId] of targets) {
+        forceDeactivation(io, room, socketId, lowRated.length > 0 ? 'rating_threshold' : 'random_review');
       }
-      io.to(room.code).emit('game:event', { type: 'fare_drought', name: eventDef.name, duration: 60 });
-      const timer = setTimeout(() => {
-        for (const [socketId, player] of room.players) {
-          player.drought = false;
-          io.to(socketId).emit('player:state_update', { ...player });
-        }
-        room.currentEvent = null;
-        io.to(room.code).emit('game:event_expired', { type: 'fare_drought' });
-      }, eventDef.duration);
-      room.timers.push(timer);
-      return { type: 'fare_drought' };
+
+      room.currentEvent = null;
+      room.phase = 'running';
+      pushHostUpdates(io, room);
+      return { type: 'deactivation_warning', targetCount: targets.length };
     }
   }
+
+  return null;
 }
 
-module.exports = { handleEvent, EVENT_TYPES };
+module.exports = { EVENT_TYPES, handleEvent };
