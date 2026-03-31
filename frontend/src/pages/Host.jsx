@@ -9,8 +9,17 @@ const EVENT_TYPES = [
 ];
 
 function formatQuest(quest) {
-  if (!quest?.accepted || !quest?.active) return 'none';
-  return `${quest.ridesCompleted}/${quest.ridesRequired} for $${quest.bonus}`;
+  if (!quest?.accepted || !quest?.active) return 'None';
+  return `${quest.ridesCompleted}/${quest.ridesRequired} • $${quest.bonus}`;
+}
+
+function Metric({ label, value }) {
+  return (
+    <div style={{ border: '1px solid #e5e5e5', borderRadius: 16, padding: 14, background: '#fff' }}>
+      <div style={{ fontSize: 12, color: '#6b6b6b', textTransform: 'uppercase', letterSpacing: 0.8 }}>{label}</div>
+      <div style={{ fontSize: 26, fontWeight: 700, marginTop: 4 }}>{value}</div>
+    </div>
+  );
 }
 
 export default function Host() {
@@ -31,25 +40,17 @@ export default function Host() {
 
     socket.on('room:player_joined', (data) => {
       setPlayers(data.players);
-      addLog(`${data.name} joined (${data.playerCount} players)`);
+      addLog(`${data.name} joined`);
     });
 
     socket.on('room:player_left', (data) => {
-      addLog(`${data.name} left (${data.playerCount} players)`);
+      addLog(`${data.name} left`);
       setPlayers((prev) => prev.filter((player) => player.name !== data.name));
     });
 
-    socket.on('host:aggregate_update', (data) => {
-      setAggregate(data);
-    });
-
-    socket.on('host:player_update', (data) => {
-      setPlayers(data.players);
-    });
-
-    socket.on('host:stat_submitted', (data) => {
-      addLog(`${data.name} submitted: "${data.answer}"`);
-    });
+    socket.on('host:aggregate_update', setAggregate);
+    socket.on('host:player_update', (data) => setPlayers(data.players));
+    socket.on('host:stat_submitted', (data) => addLog(`${data.name}: ${data.answer}`));
 
     return () => {
       socket.off('room:player_joined');
@@ -64,7 +65,7 @@ export default function Host() {
     socket.emit('host:create_room', {}, (res) => {
       setRoomCode(res.code);
       setHostToken(res.hostToken);
-      addLog(`Room created: ${res.code}`);
+      addLog(`Room ${res.code} created`);
     });
   };
 
@@ -79,7 +80,7 @@ export default function Host() {
   const triggerEvent = (eventType) => {
     socket.emit('host:trigger_event', { code: roomCode, hostToken, eventType }, (res) => {
       if (!res?.success) return;
-      addLog(`Event triggered: ${eventType}`);
+      addLog(`Event: ${eventType}`);
     });
   };
 
@@ -88,7 +89,7 @@ export default function Host() {
       if (!res?.success) return;
       setPhase('stat_screen');
       setAggregate(res.stats);
-      addLog('Stat screen opened');
+      addLog('Reflection screen shown');
     });
   };
 
@@ -104,115 +105,175 @@ export default function Host() {
     socket.emit('host:end_game', { code: roomCode, hostToken }, (res) => {
       if (!res?.success) return;
       setPhase('ended');
-      addLog('Reveal triggered for all players');
+      addLog('Reveal sent to all players');
     });
   };
 
   const liftDeactivation = (socketId) => {
     socket.emit('host:lift_deactivation', { code: roomCode, hostToken, socketId }, (res) => {
-      if (res?.success) addLog(`Lifted deactivation for ${socketId}`);
+      if (res?.success) addLog(`Lifted ${socketId}`);
     });
   };
 
   const deactivatePlayer = (socketId) => {
     socket.emit('host:deactivate_player', { code: roomCode, hostToken, socketId }, (res) => {
-      if (res?.success) addLog(`Forced deactivation on ${socketId}`);
+      if (res?.success) addLog(`Deactivated ${socketId}`);
     });
   };
 
   return (
-    <div style={{ padding: 20, fontFamily: 'monospace', background: '#0e0e0e', color: '#f2f2f2', minHeight: '100vh' }}>
-      <h1 style={{ marginTop: 0 }}>GigTrap - Host Dashboard</h1>
-      <p>Socket: {connected ? 'Connected' : 'Disconnected'}</p>
-
-      {!roomCode ? (
-        <button onClick={createRoom} disabled={!connected} style={{ padding: '10px 14px', fontSize: 16 }}>
-          Create Room
-        </button>
-      ) : (
-        <>
-          <h2 style={{ marginBottom: 6 }}>Room Code: <span style={{ fontSize: '1.7em' }}>{roomCode}</span></h2>
-          <p>Phase: {phase} | Players: {players.length}</p>
-
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-            <button onClick={startGame} disabled={phase !== 'lobby'}>Start Game</button>
-            <button onClick={showStats} disabled={phase === 'lobby' || phase === 'ended'}>Show Stats</button>
-            <button onClick={resumeGame} disabled={phase !== 'stat_screen'}>Resume</button>
-            <button onClick={revealResults} disabled={phase === 'ended'}>Reveal</button>
+    <div style={{ minHeight: '100vh', background: '#f4f4f2', color: '#111', fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', padding: 24 }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, marginBottom: 22 }}>
+          <div>
+            <div style={{ fontSize: 13, color: '#6b6b6b', textTransform: 'uppercase', letterSpacing: 1 }}>GigTrap Control</div>
+            <h1 style={{ margin: '6px 0 0', fontSize: 38, lineHeight: 1 }}>Host Dashboard</h1>
           </div>
-
-          <div style={{ marginBottom: 18 }}>
-            <strong>Trigger Events</strong>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-              {EVENT_TYPES.map((event) => (
-                <button key={event.key} onClick={() => triggerEvent(event.key)} disabled={phase !== 'running' && phase !== 'event'}>
-                  {event.label}
-                </button>
-              ))}
-            </div>
+          <div style={{ textAlign: 'right', color: '#6b6b6b' }}>
+            <div>{connected ? 'Connected' : 'Disconnected'}</div>
+            <div>Phase: {phase}</div>
           </div>
+        </div>
 
-          {aggregate && (
-            <div style={{ background: '#181818', padding: 14, borderRadius: 14, marginBottom: 18, border: '1px solid #2b2b2b' }}>
-              <strong>Live Aggregate</strong>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginTop: 10 }}>
-                <div>Avg earnings: ${aggregate.avgEarnings}</div>
-                <div>Avg hourly: ${aggregate.avgHourlyRate}/hr</div>
-                <div>Avg strain: {aggregate.avgStrain}</div>
-                <div>Avg rating: {aggregate.avgRating}</div>
-                <div>Deactivated: {aggregate.deactivatedCount}</div>
-                <div>In quest: {aggregate.activeQuestCount}</div>
+        {!roomCode ? (
+          <div style={{ background: '#fff', border: '1px solid #e5e5e5', borderRadius: 24, padding: 24 }}>
+            <button onClick={createRoom} disabled={!connected} style={{ border: 'none', background: '#111', color: '#fff', padding: '14px 18px', borderRadius: 16, fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>
+              Create Room
+            </button>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 18, marginBottom: 18 }}>
+              <div style={{ background: '#fff', border: '1px solid #e5e5e5', borderRadius: 24, padding: 22 }}>
+                <div style={{ fontSize: 12, color: '#6b6b6b', textTransform: 'uppercase', letterSpacing: 1 }}>Room</div>
+                <div style={{ fontSize: 52, fontWeight: 700, marginTop: 6, letterSpacing: 2 }}>{roomCode}</div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
+                  <button onClick={startGame} disabled={phase !== 'lobby'} style={primaryButton}>Start</button>
+                  <button onClick={showStats} disabled={phase === 'lobby' || phase === 'ended'} style={secondaryButton}>Pause / Reflect</button>
+                  <button onClick={resumeGame} disabled={phase !== 'stat_screen'} style={secondaryButton}>Resume</button>
+                  <button onClick={revealResults} disabled={phase === 'ended'} style={secondaryButton}>Reveal</button>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+                <Metric label="Players" value={aggregate?.playerCount ?? players.length} />
+                <Metric label="Avg Hourly" value={`$${aggregate?.avgHourlyRate ?? 0}/hr`} />
+                <Metric label="Deactivated" value={aggregate?.deactivatedCount ?? 0} />
+                <Metric label="Active Quests" value={aggregate?.activeQuestCount ?? 0} />
               </div>
             </div>
-          )}
 
-          <h3>Players</h3>
-          <div style={{ overflowX: 'auto', marginBottom: 18 }}>
-            <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', background: '#111', borderColor: '#2c2c2c' }}>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Earnings</th>
-                  <th>Hourly</th>
-                  <th>Rating</th>
-                  <th>Strain</th>
-                  <th>Quest</th>
-                  <th>Accept%</th>
-                  <th>Rides</th>
-                  <th>Deactivated</th>
-                  <th>Controls</th>
-                </tr>
-              </thead>
-              <tbody>
-                {players.map((player) => (
-                  <tr key={player.socketId}>
-                    <td>{player.name}</td>
-                    <td>${player.earnings}</td>
-                    <td>${player.effectiveHourlyRate}/hr</td>
-                    <td>{player.rating}</td>
-                    <td>{player.strainLevel}</td>
-                    <td>{formatQuest(player.quest)}</td>
-                    <td>{player.acceptanceRate}%</td>
-                    <td>{player.ridesCompleted || 0}</td>
-                    <td>{player.isDeactivated ? 'YES' : 'no'}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        <button onClick={() => deactivatePlayer(player.socketId)} disabled={player.isDeactivated}>Deactivate</button>
-                        <button onClick={() => liftDeactivation(player.socketId)} disabled={!player.isDeactivated}>Lift</button>
-                      </div>
-                    </td>
-                  </tr>
+            <div style={{ background: '#fff', border: '1px solid #e5e5e5', borderRadius: 24, padding: 22, marginBottom: 18 }}>
+              <div style={{ fontSize: 12, color: '#6b6b6b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Events</div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {EVENT_TYPES.map((event) => (
+                  <button key={event.key} onClick={() => triggerEvent(event.key)} disabled={phase !== 'running' && phase !== 'event'} style={secondaryButton}>
+                    {event.label}
+                  </button>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            </div>
 
-          <h3>Event Log</h3>
-          <div style={{ maxHeight: 240, overflow: 'auto', background: '#050505', color: '#7dff8d', padding: 12, borderRadius: 12, border: '1px solid #1d1d1d', fontSize: 12 }}>
-            {log.map((line, index) => <div key={index}>{line}</div>)}
-          </div>
-        </>
-      )}
+            <div style={{ display: 'grid', gridTemplateColumns: '1.7fr 1fr', gap: 18 }}>
+              <div style={{ background: '#fff', border: '1px solid #e5e5e5', borderRadius: 24, overflow: 'hidden' }}>
+                <div style={{ padding: 18, borderBottom: '1px solid #ececec', fontSize: 12, color: '#6b6b6b', textTransform: 'uppercase', letterSpacing: 1 }}>
+                  Live players
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: '#fafafa', textAlign: 'left' }}>
+                        <th style={cellHead}>Name</th>
+                        <th style={cellHead}>Earnings</th>
+                        <th style={cellHead}>Hourly</th>
+                        <th style={cellHead}>Rating</th>
+                        <th style={cellHead}>Strain</th>
+                        <th style={cellHead}>Quest</th>
+                        <th style={cellHead}>Status</th>
+                        <th style={cellHead}>Controls</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {players.map((player) => (
+                        <tr key={player.socketId} style={{ borderTop: '1px solid #f0f0f0' }}>
+                          <td style={cellBody}>{player.name}</td>
+                          <td style={cellBody}>${player.earnings}</td>
+                          <td style={cellBody}>${player.effectiveHourlyRate}/hr</td>
+                          <td style={cellBody}>{player.rating}</td>
+                          <td style={cellBody}>{player.strainLevel}</td>
+                          <td style={cellBody}>{formatQuest(player.quest)}</td>
+                          <td style={cellBody}>{player.isDeactivated ? 'Locked out' : 'Active'}</td>
+                          <td style={cellBody}>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                              <button onClick={() => deactivatePlayer(player.socketId)} disabled={player.isDeactivated} style={miniButton}>Deactivate</button>
+                              <button onClick={() => liftDeactivation(player.socketId)} disabled={!player.isDeactivated} style={miniButton}>Lift</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div style={{ background: '#fff', border: '1px solid #e5e5e5', borderRadius: 24, padding: 18 }}>
+                <div style={{ fontSize: 12, color: '#6b6b6b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Event log</div>
+                <div style={{ display: 'grid', gap: 8, maxHeight: 480, overflow: 'auto' }}>
+                  {log.map((line, index) => (
+                    <div key={index} style={{ border: '1px solid #ececec', borderRadius: 14, padding: '10px 12px', background: '#fafafa', fontSize: 13 }}>
+                      {line}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
+
+const primaryButton = {
+  border: 'none',
+  background: '#111',
+  color: '#fff',
+  padding: '12px 16px',
+  borderRadius: 14,
+  fontWeight: 700,
+  cursor: 'pointer',
+};
+
+const secondaryButton = {
+  border: '1px solid #d8d8dd',
+  background: '#fff',
+  color: '#111',
+  padding: '12px 16px',
+  borderRadius: 14,
+  fontWeight: 700,
+  cursor: 'pointer',
+};
+
+const miniButton = {
+  border: '1px solid #d8d8dd',
+  background: '#fff',
+  color: '#111',
+  padding: '8px 10px',
+  borderRadius: 12,
+  fontWeight: 600,
+  cursor: 'pointer',
+};
+
+const cellHead = {
+  padding: '12px 14px',
+  fontSize: 12,
+  color: '#6b6b6b',
+  textTransform: 'uppercase',
+  letterSpacing: 0.8,
+};
+
+const cellBody = {
+  padding: '14px',
+  fontSize: 14,
+  verticalAlign: 'top',
+};
