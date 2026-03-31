@@ -90,6 +90,11 @@ function clearPayInfoPrompt(player) {
   player.showPayInfoPrompt = false;
 }
 
+function clearRideState(player) {
+  player.pendingRequest = null;
+  player.currentTrip = null;
+}
+
 function finalizeQuest(player, completed = false) {
   if (!player.quest) return;
 
@@ -224,6 +229,22 @@ function stopRideLoop(socketId) {
 function stopAllRideLoops(room) {
   for (const socketId of room.players.keys()) {
     stopRideLoop(socketId);
+  }
+}
+
+function freezePlayer(io, socketId, player, state = 'paused', now = Date.now()) {
+  stopRideLoop(socketId);
+  clearRideState(player);
+  syncSimulatedTime(player, now);
+  player.engagementState = state;
+  player.simStateStartedAt = now;
+  player.effectiveHourlyRate = calculateEffectiveHourlyRate(player, now);
+  emitPlayerState(io, socketId, player);
+}
+
+function freezeAllPlayers(io, room, state = 'paused', now = Date.now()) {
+  for (const [socketId, player] of room.players.entries()) {
+    freezePlayer(io, socketId, player, state, now);
   }
 }
 
@@ -472,6 +493,7 @@ function liftDeactivation(io, room, socketId) {
 
   player.isDeactivated = false;
   player.deactivationReason = null;
+  clearRideState(player);
   setEngagementState(player, 'idle', Date.now());
   emitPlayerState(io, socketId, player);
   pushHostUpdates(io, room);
@@ -488,6 +510,8 @@ module.exports = {
   getPublicPlayerState,
   handleAccept,
   handleDecline,
+  freezeAllPlayers,
+  freezePlayer,
   liftDeactivation,
   markMechanic,
   pushHostUpdates,

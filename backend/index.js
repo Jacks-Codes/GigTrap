@@ -16,6 +16,7 @@ const { handleEvent } = require('./events');
 const {
   emitPlayerState,
   forceDeactivation,
+  freezeAllPlayers,
   getPublicPlayerState,
   startRideLoop,
   stopRideLoop,
@@ -91,11 +92,7 @@ io.on('connection', (socket) => {
     const room = getRoom(code);
     if (!room || room.hostToken !== hostToken) return cb?.({ error: 'Unauthorized' });
     room.phase = 'stat_screen';
-    for (const [socketId, player] of room.players.entries()) {
-      syncSimulatedTime(player);
-      emitPlayerState(io, socketId, player);
-    }
-    stopAllRideLoops(room);
+    freezeAllPlayers(io, room, 'paused');
     const stats = getAggregateStats(room);
     io.to(code).emit('game:stat_screen', stats);
     pushHostUpdates(io, room);
@@ -122,11 +119,7 @@ io.on('connection', (socket) => {
     const room = getRoom(code);
     if (!room || room.hostToken !== hostToken) return cb?.({ error: 'Unauthorized' });
     room.phase = 'ended';
-    for (const [socketId, player] of room.players.entries()) {
-      syncSimulatedTime(player);
-      emitPlayerState(io, socketId, player);
-    }
-    stopAllRideLoops(room);
+    freezeAllPlayers(io, room, 'ended');
     io.to(code).emit('game:ended', getAggregateStats(room));
     pushHostUpdates(io, room);
     cb?.({ success: true });
