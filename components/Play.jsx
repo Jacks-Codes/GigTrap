@@ -353,6 +353,29 @@ export default function Play() {
     setToast(data.correct ? `Correct. +${formatMoney(data.reward)} and a rating bump.` : 'Wrong. Rating decreased.');
   };
 
+  const handleGoOffline = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    const res = await fetch(`/api/player/${session.playerId}/go-offline`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code: roomCode,
+        token: session.playerToken,
+      }),
+    });
+    const data = await res.json();
+    setSubmitting(false);
+    if (!res.ok || data.error) {
+      setToast(data.error || 'Could not go offline');
+      return;
+    }
+    applyResponseState(data.state);
+    if (data.message) {
+      setToast(data.message);
+    }
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: '#f6f6f4', color: '#111', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'relative', zIndex: 1, maxWidth: 430, margin: '0 auto', minHeight: '100vh', background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)', boxShadow: '0 0 0 1px rgba(255,255,255,0.3)' }}>
@@ -517,7 +540,7 @@ export default function Play() {
 
         {phase === 'running' && !currentTrip && !currentRequest && (
           <div style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 430, bottom: 0, zIndex: 6, padding: '14px 18px 22px', background: 'linear-gradient(180deg, rgba(246,246,244,0) 0%, rgba(246,246,244,0.92) 22%, #f6f6f4 100%)' }}>
-            <button style={{ width: '100%', border: 'none', borderRadius: 18, background: '#1f1f22', color: '#fff', padding: '16px 18px', fontSize: 16, fontWeight: 700 }}>
+            <button onClick={handleGoOffline} style={{ width: '100%', border: 'none', borderRadius: 18, background: '#1f1f22', color: '#fff', padding: '16px 18px', fontSize: 16, fontWeight: 700 }}>
               Go offline
             </button>
           </div>
