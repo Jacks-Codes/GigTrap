@@ -13,6 +13,13 @@ function createPlayerState(name) {
     currentFare: null,
     isDeactivated: false,
     statAnswers: [],
+    // Ride engine fields
+    gameStartedAt: null,
+    lastRequestTime: null,
+    pendingRequest: null,
+    consecutiveMisses: 0,
+    ridesCompleted: 0,
+    drought: false,
   };
 }
 

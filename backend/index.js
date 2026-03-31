@@ -11,8 +11,16 @@ const {
   getPlayerCount,
   getAggregateStats,
 } = require('./roomManager');
-const { createPlayerState, calculateFare } = require('./playerState');
+const { createPlayerState } = require('./playerState');
 const { handleEvent } = require('./events');
+const {
+  startRideLoop,
+  stopRideLoop,
+  stopAllRideLoops,
+  handleAccept,
+  handleDecline,
+  sanitizePlayer,
+} = require('./rideEngine');
 
 const app = express();
 app.use(cors());
@@ -49,6 +57,13 @@ io.on('connection', (socket) => {
     if (!room || room.hostToken !== hostToken) return cb?.({ error: 'Unauthorized' });
     room.phase = 'running';
     io.to(code).emit('game:started', { phase: 'running' });
+
+    // Start ride loops for all connected players
+    for (const [socketId, player] of room.players) {
+      player.gameStartedAt = Date.now();
+      startRideLoop(io, room, socketId);
+    }
+
     cb?.({ success: true });
   });
 
@@ -57,7 +72,6 @@ io.on('connection', (socket) => {
     if (!room || room.hostToken !== hostToken) return cb?.({ error: 'Unauthorized' });
     room.phase = 'event';
     const result = handleEvent(io, room, eventType);
-    // Send updated aggregate to host
     io.to(room.hostSocketId).emit('host:aggregate_update', getAggregateStats(room));
     cb?.({ success: true, event: result });
   });
@@ -66,15 +80,28 @@ io.on('connection', (socket) => {
     const room = getRoom(code);
     if (!room || room.hostToken !== hostToken) return cb?.({ error: 'Unauthorized' });
     room.phase = 'stat_screen';
+    stopAllRideLoops(room);
     const stats = getAggregateStats(room);
     io.to(code).emit('game:stat_screen', stats);
     cb?.({ success: true, stats });
+  });
+
+  socket.on('host:resume_game', ({ code, hostToken }, cb) => {
+    const room = getRoom(code);
+    if (!room || room.hostToken !== hostToken) return cb?.({ error: 'Unauthorized' });
+    room.phase = 'running';
+    io.to(code).emit('game:started', { phase: 'running' });
+    for (const socketId of room.players.keys()) {
+      startRideLoop(io, room, socketId);
+    }
+    cb?.({ success: true });
   });
 
   socket.on('host:end_game', ({ code, hostToken }, cb) => {
     const room = getRoom(code);
     if (!room || room.hostToken !== hostToken) return cb?.({ error: 'Unauthorized' });
     room.phase = 'ended';
+    stopAllRideLoops(room);
     io.to(code).emit('game:ended', getAggregateStats(room));
     cb?.({ success: true });
   });
@@ -88,6 +115,9 @@ io.on('connection', (socket) => {
     if (room.phase === 'ended') return cb?.({ error: 'Game has ended' });
 
     const state = createPlayerState(name);
+    state.gameStartedAt = Date.now();
+    state.consecutiveMisses = 0;
+    state.ridesCompleted = 0;
     room.players.set(socket.id, state);
     socket.join(roomCode);
     socket.data.roomCode = roomCode;
@@ -101,53 +131,36 @@ io.on('connection', (socket) => {
       io.to(room.hostSocketId).emit('room:player_joined', {
         name,
         playerCount: getPlayerCount(room),
-        players: Array.from(room.players.values()).map((p) => ({
-          name: p.name,
-          earnings: p.earnings,
-          rating: p.rating,
-          strainLevel: p.strainLevel,
-          acceptanceRate: p.acceptanceRate,
-          isDeactivated: p.isDeactivated,
-        })),
+        players: Array.from(room.players.values()).map(sanitizePlayer),
       });
     }
-  });
 
-  socket.on('player:accept_ride', (_, cb) => {
-    const room = getRoomByPlayerSocket(socket.id);
-    if (!room) return cb?.({ error: 'Not in a room' });
-    const player = room.players.get(socket.id);
-    if (!player || player.isDeactivated) return cb?.({ error: 'Cannot accept rides' });
-
-    const fare = calculateFare(player);
-    player.earnings = parseFloat((player.earnings + fare).toFixed(2));
-    player.currentFare = fare;
-    player.strainLevel = Math.min(100, player.strainLevel + Math.floor(Math.random() * 3));
-
-    cb?.({ success: true, state: { ...player } });
-    socket.emit('player:state_update', { ...player });
-
-    // Update host
-    if (room.hostSocketId) {
-      io.to(room.hostSocketId).emit('host:aggregate_update', getAggregateStats(room));
+    // If game is already running, start their ride loop
+    if (room.phase === 'running' || room.phase === 'event') {
+      startRideLoop(io, room, socket.id);
     }
   });
 
-  socket.on('player:decline_ride', (_, cb) => {
+  // New ride system — server pushes requests, player responds
+  socket.on('ride:accept', ({ requestId }, cb) => {
     const room = getRoomByPlayerSocket(socket.id);
     if (!room) return cb?.({ error: 'Not in a room' });
-    const player = room.players.get(socket.id);
-    if (!player || player.isDeactivated) return cb?.({ error: 'Cannot act' });
+    const result = handleAccept(io, room, socket.id, requestId);
+    cb?.(result);
+  });
 
-    player.acceptanceRate = Math.max(0, player.acceptanceRate - Math.floor(Math.random() * 3 + 1));
-    player.strainLevel = Math.min(100, player.strainLevel + Math.floor(Math.random() * 5 + 2));
+  socket.on('ride:decline', ({ requestId }, cb) => {
+    const room = getRoomByPlayerSocket(socket.id);
+    if (!room) return cb?.({ error: 'Not in a room' });
+    const result = handleDecline(io, room, socket.id, requestId, false);
+    cb?.(result);
+  });
 
-    cb?.({ success: true, state: { ...player } });
-    socket.emit('player:state_update', { ...player });
-
-    if (room.hostSocketId) {
-      io.to(room.hostSocketId).emit('host:aggregate_update', getAggregateStats(room));
-    }
+  socket.on('ride:timeout', ({ requestId }, cb) => {
+    const room = getRoomByPlayerSocket(socket.id);
+    if (!room) return cb?.({ error: 'Not in a room' });
+    const result = handleDecline(io, room, socket.id, requestId, true);
+    cb?.(result);
   });
 
   socket.on('player:submit_stat', ({ answer }, cb) => {
@@ -172,20 +185,20 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log(`Disconnected: ${socket.id}`);
 
-    // Check if it was a host
     const hostRoom = getRoomByHostSocket(socket.id);
     if (hostRoom) {
       console.log(`Host left room ${hostRoom.code}, cleaning up`);
+      stopAllRideLoops(hostRoom);
       io.to(hostRoom.code).emit('game:ended', { reason: 'Host disconnected' });
       deleteRoom(hostRoom.code);
       return;
     }
 
-    // Check if it was a player
     const playerRoom = getRoomByPlayerSocket(socket.id);
     if (playerRoom) {
       const player = playerRoom.players.get(socket.id);
       console.log(`Player "${player?.name}" left room ${playerRoom.code}`);
+      stopRideLoop(socket.id);
       playerRoom.players.delete(socket.id);
       if (playerRoom.hostSocketId) {
         io.to(playerRoom.hostSocketId).emit('room:player_left', {
