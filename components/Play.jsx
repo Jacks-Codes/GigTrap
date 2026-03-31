@@ -63,6 +63,12 @@ function StatPill({ label, value, tone = 'default' }) {
   );
 }
 
+function topBarTone(rating) {
+  if (rating < 4.6) return 'danger';
+  if (rating < 4.8) return 'warn';
+  return 'default';
+}
+
 function getStoredSession() {
   if (typeof window === 'undefined') return null;
   const saved = sessionStorage.getItem('gigtrap_player');
@@ -80,9 +86,21 @@ export default function Play() {
   const [clockOffsetMs, setClockOffsetMs] = useState(0);
   const [tickNow, setTickNow] = useState(() => Date.now());
   const [toast, setToast] = useState(null);
+  const [fareToast, setFareToast] = useState(null);
+  const [ratingDisplay, setRatingDisplay] = useState(() => getStoredSession()?.rating || 5);
+  const [surgeState, setSurgeState] = useState(null);
+  const [ratingDropCard, setRatingDropCard] = useState(null);
+  const [questOffer, setQuestOffer] = useState(null);
+  const [learnMoreOpen, setLearnMoreOpen] = useState(false);
+  const [appealSubmitted, setAppealSubmitted] = useState(false);
+  const [appealText, setAppealText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const pollTimerRef = useRef(null);
   const previousRequestRef = useRef(null);
+  const lastCompletionRef = useRef(null);
+  const lastSurgeRef = useRef(null);
+  const lastQuestRef = useRef(null);
+  const lastRatingDropRef = useRef(null);
   const phase = payload?.phase || 'lobby';
 
   useEffect(() => {
@@ -90,6 +108,22 @@ export default function Play() {
     const timer = setTimeout(() => setToast(null), 2400);
     return () => clearTimeout(timer);
   }, [toast]);
+
+  useEffect(() => {
+    if (!fareToast) return undefined;
+    const timer = setTimeout(() => setFareToast(null), 3200);
+    return () => clearTimeout(timer);
+  }, [fareToast]);
+
+  useEffect(() => {
+    if (!surgeState?.expiresAt) return undefined;
+    const remaining = Math.max(0, surgeState.expiresAt - (Date.now() + clockOffsetMs));
+    const timer = setTimeout(() => {
+      setSurgeState(null);
+      setToast('Surge has ended in your area');
+    }, remaining);
+    return () => clearTimeout(timer);
+  }, [clockOffsetMs, surgeState]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -118,11 +152,55 @@ export default function Play() {
         setToast('Request expired');
       }
 
+      const completionStamp = data.player?.lastTripCompletedAt || null;
+      if (completionStamp && completionStamp !== lastCompletionRef.current) {
+        setFareToast(`Trip complete • ${formatMoney(data.player?.lastTripPayout || 0)}`);
+      }
+
+      const surgeEventId = data.player?.activeSurge?.eventId || null;
+      if (surgeEventId && surgeEventId !== lastSurgeRef.current) {
+        setSurgeState(data.player.activeSurge);
+      } else if (!surgeEventId) {
+        setSurgeState(null);
+      }
+
+      const questEventId = data.player?.pendingQuestOffer?.eventId || null;
+      if (questEventId && questEventId !== lastQuestRef.current) {
+        setQuestOffer(data.player.pendingQuestOffer);
+      } else if (!questEventId) {
+        setQuestOffer(null);
+      }
+
+      const ratingEventId = data.player?.latestRatingDrop?.eventId || null;
+      if (ratingEventId && ratingEventId !== lastRatingDropRef.current) {
+        const drop = data.player.latestRatingDrop;
+        setRatingDropCard(drop);
+        const start = drop.oldRating;
+        const end = drop.newRating;
+        const startedAt = Date.now();
+        const animation = setInterval(() => {
+          const elapsed = Date.now() - startedAt;
+          const progress = Math.min(1, elapsed / 1400);
+          const current = start + ((end - start) * progress);
+          setRatingDisplay(parseFloat(current.toFixed(2)));
+          if (progress >= 1) {
+            clearInterval(animation);
+          }
+        }, 50);
+        setTimeout(() => clearInterval(animation), 1600);
+      } else if (!ratingDropCard && data.player?.rating) {
+        setRatingDisplay(data.player.rating);
+      }
+
       setPayload(data);
       setSession(data.player);
       setClockOffsetMs((data.serverNow || Date.now()) - Date.now());
       sessionStorage.setItem('gigtrap_player', JSON.stringify(data.player));
       previousRequestRef.current = currentRequestId;
+      lastCompletionRef.current = completionStamp;
+      lastSurgeRef.current = surgeEventId;
+      lastQuestRef.current = questEventId;
+      lastRatingDropRef.current = ratingEventId;
     };
 
     poll();
@@ -132,7 +210,7 @@ export default function Play() {
       cancelled = true;
       clearInterval(pollTimerRef.current);
     };
-  }, [session?.playerId, session?.playerToken, submitting]);
+  }, [ratingDropCard, session?.playerId, session?.playerToken, submitting]);
 
   if (!session) {
     return (
@@ -154,6 +232,8 @@ export default function Play() {
     ? (tripRemainingMs / Math.max(1, currentTrip.durationMs || 1)) * currentTrip.durationSeconds
     : 0;
   const tone = session.effectiveHourlyRate < 10 ? 'danger' : session.effectiveHourlyRate < 16 ? 'warn' : 'default';
+  const ratingTone = topBarTone(ratingDropCard ? ratingDisplay : session.rating);
+  const shownRating = (ratingDropCard ? ratingDisplay : session.rating).toFixed(2);
 
   const applyResponseState = (statePayload) => {
     if (!statePayload?.player) return;
@@ -217,6 +297,28 @@ export default function Play() {
     setToast(wasTimeout ? 'Request timed out' : 'Ride declined');
   };
 
+  const handleQuestResponse = async (accepted) => {
+    if (submitting) return;
+    setSubmitting(true);
+    const res = await fetch(`/api/player/${session.playerId}/quest-response`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code: roomCode,
+        token: session.playerToken,
+        accepted,
+      }),
+    });
+    const data = await res.json();
+    setSubmitting(false);
+    if (!res.ok || data.error) {
+      setToast(data.error || 'Could not respond to quest');
+      return;
+    }
+    setQuestOffer(null);
+    applyResponseState(data.state);
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: '#f6f6f4', color: '#111', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'relative', zIndex: 1, maxWidth: 430, margin: '0 auto', minHeight: '100vh', background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)', boxShadow: '0 0 0 1px rgba(255,255,255,0.3)' }}>
@@ -241,9 +343,21 @@ export default function Play() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, marginBottom: 10 }}>
             <StatPill label="Earnings" value={formatMoney(session.earnings)} />
-            <StatPill label="Rating" value={`${session.rating.toFixed(2)} ★`} tone={session.rating < 4.6 ? 'danger' : session.rating < 4.8 ? 'warn' : 'default'} />
+            <StatPill label="Rating" value={`${shownRating} ★`} tone={ratingTone} />
             <StatPill label="Rate" value={`${formatMoney(session.effectiveHourlyRate || 0)}/hr`} tone={tone} />
           </div>
+
+          {session.quest?.accepted && session.quest?.active && (
+            <div style={{ background: '#0d8a4a', color: '#fff', borderRadius: 22, padding: '14px 16px', marginBottom: 12, boxShadow: '0 10px 20px rgba(13,138,74,0.18)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                <span>Quest bonus</span>
+                <span>{session.quest.ridesCompleted}/{session.quest.ridesRequired} rides</span>
+              </div>
+              <div style={{ height: 8, borderRadius: 999, background: 'rgba(255,255,255,0.24)', marginTop: 10, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${Math.min(100, (session.quest.ridesCompleted / session.quest.ridesRequired) * 100)}%`, background: '#fff', transition: 'width 0.4s ease' }} />
+              </div>
+            </div>
+          )}
         </div>
 
         <div style={{ padding: '0 18px 160px' }}>
@@ -263,6 +377,15 @@ export default function Play() {
                 <div style={{ position: 'absolute', inset: 8, borderRadius: '50%', background: '#fff' }} />
               </div>
             </div>
+
+            {surgeState && (
+              <>
+                <div style={{ position: 'absolute', top: '23%', left: '54%', width: 156, height: 156, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,121,44,0.7), rgba(214,55,33,0.1) 68%)', animation: 'surgePulse 1.7s ease-in-out infinite' }} />
+                <div style={{ position: 'absolute', top: 18, left: 18, right: 18, background: '#111', color: '#fff', borderRadius: 18, padding: '14px 16px', fontWeight: 600, boxShadow: '0 18px 30px rgba(17,17,17,0.18)' }}>
+                  Surge pricing active. {surgeState.surgeMultiplier}x earnings in your area.
+                </div>
+              </>
+            )}
 
             {currentTrip && (
               <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: 172, minHeight: 172, borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'rgba(255,255,255,0.94)', boxShadow: '0 20px 40px rgba(17,17,17,0.14)' }}>
@@ -368,7 +491,98 @@ export default function Play() {
             {toast}
           </div>
         )}
+
+        {fareToast && (
+          <div style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: phase === 'running' && currentRequest ? 296 : 168, width: 'calc(100% - 36px)', maxWidth: 394, background: '#12a150', color: '#fff', borderRadius: 16, padding: '14px 16px', zIndex: 9, boxShadow: '0 18px 36px rgba(17,17,17,0.2)', fontWeight: 700 }}>
+            {fareToast}
+          </div>
+        )}
+
+        {ratingDropCard && (
+          <div style={{ position: 'fixed', left: 18, right: 18, bottom: 100, zIndex: 30, animation: 'slideUp 0.35s ease-out forwards' }}>
+            <div style={{ background: '#fff', color: '#111', borderRadius: 24, padding: 18, boxShadow: '0 28px 50px rgba(17,17,17,0.18)' }}>
+              <div style={{ fontSize: 12, color: '#70757a', textTransform: 'uppercase', letterSpacing: 1 }}>Rider feedback</div>
+              <div style={{ fontSize: 24, margin: '8px 0 6px' }}>{'★'.repeat(ratingDropCard.reviewStars)}{'☆'.repeat(5 - ratingDropCard.reviewStars)}</div>
+              <div style={{ fontWeight: 600 }}>{ratingDropCard.reviewText}</div>
+              <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                <button onClick={() => { setRatingDropCard(null); setRatingDisplay(session.rating); }} style={{ flex: 1, border: 'none', borderRadius: 14, background: '#111', color: '#fff', padding: '14px 12px', cursor: 'pointer', fontWeight: 700 }}>
+                  Dismiss
+                </button>
+                <button disabled style={{ flex: 1, border: '1px solid #d8d8dd', borderRadius: 14, background: '#f3f3f4', color: '#a2a4a8', padding: '14px 12px', fontWeight: 700 }}>
+                  Contact Support
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {questOffer && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(17,17,17,0.58)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 40 }}>
+            <div style={{ width: '100%', maxWidth: 370, background: '#fff', borderRadius: 30, padding: 24, boxShadow: '0 35px 60px rgba(17,17,17,0.2)' }}>
+              <div style={{ fontSize: 12, color: '#0d8a4a', textTransform: 'uppercase', letterSpacing: 1 }}>Opportunity</div>
+              <div style={{ fontSize: 30, lineHeight: 1.05, fontWeight: 700, marginTop: 10 }}>Complete {questOffer.ridesRequired} more rides in the next 30 minutes and earn a ${questOffer.bonus} bonus.</div>
+              <div style={{ color: '#70757a', marginTop: 12 }}>Accept to stay engaged and keep chasing the target.</div>
+              <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                <button onClick={() => handleQuestResponse(true)} style={{ flex: 1, border: 'none', borderRadius: 16, background: '#0d8a4a', color: '#fff', padding: '15px 12px', cursor: 'pointer', fontWeight: 700 }}>
+                  Accept
+                </button>
+                <button onClick={() => handleQuestResponse(false)} style={{ flex: 1, border: '1px solid #dbdce1', borderRadius: 16, background: '#fff', color: '#111', padding: '15px 12px', cursor: 'pointer', fontWeight: 700 }}>
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {session.isDeactivated && (
+          <div style={{ position: 'fixed', inset: 0, background: '#050505', color: '#fff', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 22 }}>
+            <div style={{ width: '100%', maxWidth: 420 }}>
+              <div style={{ width: 58, height: 58, borderRadius: 16, background: '#fff', color: '#111', display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: 28, marginBottom: 20 }}>U</div>
+              <div style={{ fontSize: 34, lineHeight: 1.02, fontWeight: 700 }}>Your account has been placed under review</div>
+              <div style={{ color: '#b7b7bc', marginTop: 14, lineHeight: 1.5 }}>
+                You will not receive ride requests while your account is being reviewed. This process typically takes 24-48 hours.
+              </div>
+              <div style={{ display: 'grid', gap: 12, marginTop: 24 }}>
+                <button onClick={() => setLearnMoreOpen(true)} style={{ border: 'none', borderRadius: 18, background: '#1c1c1f', color: '#fff', padding: '15px 14px', cursor: 'pointer', fontWeight: 700 }}>
+                  Learn More
+                </button>
+                <div style={{ background: '#111214', borderRadius: 20, padding: 16 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 10 }}>Appeal</div>
+                  <textarea value={appealText} onChange={(e) => setAppealText(e.target.value)} rows={5} placeholder="Tell us what happened" style={{ width: '100%', boxSizing: 'border-box', borderRadius: 16, background: '#1a1a1d', color: '#fff', border: '1px solid #2c2d31', padding: 14, resize: 'none' }} />
+                  <button onClick={() => setAppealSubmitted(true)} style={{ width: '100%', marginTop: 12, border: 'none', borderRadius: 16, background: '#fff', color: '#111', padding: '14px 12px', cursor: 'pointer', fontWeight: 700 }}>
+                    Submit Appeal
+                  </button>
+                  {appealSubmitted && <div style={{ marginTop: 10, color: '#c8c8cc' }}>Your appeal has been received. You will be notified by email.</div>}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {learnMoreOpen && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(5,5,5,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18, zIndex: 60 }}>
+            <div style={{ width: '100%', maxWidth: 390, background: '#fff', color: '#111', borderRadius: 24, padding: 20 }}>
+              <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 14 }}>Account review FAQ</div>
+              <div style={{ color: '#4b4f55', marginBottom: 10 }}>Why was my account reviewed? Reviews are based on many signals specific to your market.</div>
+              <div style={{ color: '#4b4f55', marginBottom: 10 }}>Can support explain the decision? Additional context is unavailable during active review.</div>
+              <div style={{ color: '#4b4f55', marginBottom: 18 }}>How long will this take? Review timelines vary.</div>
+              <button onClick={() => setLearnMoreOpen(false)} style={{ width: '100%', border: 'none', borderRadius: 16, background: '#111', color: '#fff', padding: '14px 12px', cursor: 'pointer', fontWeight: 700 }}>
+                Close
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+      <style>{`
+        @keyframes surgePulse {
+          0%, 100% { transform: scale(0.94); opacity: 0.58; }
+          50% { transform: scale(1.08); opacity: 1; }
+        }
+        @keyframes slideUp {
+          from { transform: translateY(26px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }

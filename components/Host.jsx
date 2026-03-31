@@ -2,6 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+const EVENT_TYPES = [
+  { key: 'phantom_surge', label: 'Phantom Surge' },
+  { key: 'rating_drop', label: 'Rating Drop' },
+  { key: 'quest_offer', label: 'Quest Bonus Trap' },
+  { key: 'deactivation_warning', label: 'Random Deactivation' },
+];
+
 function formatQuest(quest) {
   if (!quest?.accepted || !quest?.active) return 'None';
   return `${quest.ridesCompleted}/${quest.ridesRequired} • $${quest.bonus}`;
@@ -14,6 +21,19 @@ function Metric({ label, value }) {
       <div style={{ fontSize: 26, fontWeight: 700, marginTop: 4 }}>{value}</div>
     </div>
   );
+}
+
+function formatSeconds(seconds) {
+  const totalSeconds = Math.max(0, Math.round(seconds || 0));
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function formatSuppression(suppressedUntil, serverNow) {
+  const remainingMs = Math.max(0, (suppressedUntil || 0) - (serverNow || Date.now()));
+  if (remainingMs <= 0) return 'No';
+  return `${Math.ceil(remainingMs / 1000)}s`;
 }
 
 export default function Host() {
@@ -50,6 +70,7 @@ export default function Host() {
 
   const players = snapshot?.players || [];
   const aggregate = snapshot?.aggregate || null;
+  const serverNow = snapshot?.serverNow || 0;
 
   const createRoom = async () => {
     const res = await fetch('/api/host/create-room', { method: 'POST' });
@@ -97,6 +118,42 @@ export default function Host() {
     setSnapshot(data.snapshot);
     setPhase('ended');
     addLog('Reveal sent to all players');
+  };
+
+  const triggerEvent = async (eventType) => {
+    const res = await fetch('/api/host/trigger-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: roomCode, hostToken, eventType }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) return;
+    setSnapshot(data.snapshot);
+    addLog(`Event: ${eventType}`);
+  };
+
+  const deactivatePlayer = async (playerId) => {
+    const res = await fetch('/api/host/deactivate-player', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: roomCode, hostToken, playerId }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) return;
+    setSnapshot(data.snapshot);
+    addLog(`Deactivated ${playerId.slice(0, 6)}`);
+  };
+
+  const liftDeactivation = async (playerId) => {
+    const res = await fetch('/api/host/lift-deactivation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: roomCode, hostToken, playerId }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) return;
+    setSnapshot(data.snapshot);
+    addLog(`Lifted ${playerId.slice(0, 6)}`);
   };
 
   const joinUrl = useMemo(
@@ -182,6 +239,16 @@ export default function Host() {
             <div style={{ display: 'grid', gridTemplateColumns: '1.7fr 1fr', gap: 18 }}>
               <div style={{ background: '#fff', border: '1px solid #e5e5e5', borderRadius: 24, overflow: 'hidden' }}>
                 <div style={{ padding: 18, borderBottom: '1px solid #ececec', fontSize: 12, color: '#6b6b6b', textTransform: 'uppercase', letterSpacing: 1 }}>
+                  Events
+                </div>
+                <div style={{ padding: 18, display: 'flex', gap: 10, flexWrap: 'wrap', borderBottom: '1px solid #ececec' }}>
+                  {EVENT_TYPES.map((event) => (
+                    <button key={event.key} onClick={() => triggerEvent(event.key)} disabled={phase !== 'running' && phase !== 'event'} style={secondaryButton}>
+                      {event.label}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ padding: 18, borderBottom: '1px solid #ececec', fontSize: 12, color: '#6b6b6b', textTransform: 'uppercase', letterSpacing: 1 }}>
                   Live players
                 </div>
                 <div style={{ overflowX: 'auto' }}>
@@ -191,10 +258,17 @@ export default function Host() {
                         <th style={cellHead}>Name</th>
                         <th style={cellHead}>Earnings</th>
                         <th style={cellHead}>Hourly</th>
+                        <th style={cellHead}>Last Fare</th>
                         <th style={cellHead}>Rating</th>
                         <th style={cellHead}>Strain</th>
+                        <th style={cellHead}>Variance</th>
+                        <th style={cellHead}>Drive</th>
+                        <th style={cellHead}>Wait</th>
+                        <th style={cellHead}>Miles</th>
+                        <th style={cellHead}>Suppressed</th>
                         <th style={cellHead}>Quest</th>
                         <th style={cellHead}>Status</th>
+                        <th style={cellHead}>Controls</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -203,10 +277,26 @@ export default function Host() {
                           <td style={cellBody}>{player.name}</td>
                           <td style={cellBody}>${player.earnings}</td>
                           <td style={cellBody}>${player.effectiveHourlyRate}/hr</td>
+                          <td style={cellBody}>${player.lastTripPayout || 0}</td>
                           <td style={cellBody}>{player.rating}</td>
                           <td style={cellBody}>{player.strainLevel}</td>
+                          <td style={cellBody}>{player.fareVariance?.toFixed ? `${player.fareVariance.toFixed(2)}x` : player.fareVariance}</td>
+                          <td style={cellBody}>{formatSeconds(player.simulatedDriveSeconds)}</td>
+                          <td style={cellBody}>{formatSeconds(player.simulatedWaitSeconds)}</td>
+                          <td style={cellBody}>{player.simulatedMiles?.toFixed ? player.simulatedMiles.toFixed(1) : player.simulatedMiles}</td>
+                          <td style={cellBody}>{formatSuppression(player.suppressedUntil, serverNow)}</td>
                           <td style={cellBody}>{formatQuest(player.quest)}</td>
-                          <td style={cellBody}>{player.isDeactivated ? 'Locked out' : player.engagementState}</td>
+                          <td style={cellBody}>
+                            {player.isDeactivated ? 'Locked out' : player.engagementState}
+                            {player.hasPendingRequest ? ' • request' : ''}
+                            {player.hasCurrentTrip ? ' • trip' : ''}
+                          </td>
+                          <td style={cellBody}>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                              <button onClick={() => deactivatePlayer(player.playerId)} disabled={player.isDeactivated} style={miniButton}>Deactivate</button>
+                              <button onClick={() => liftDeactivation(player.playerId)} disabled={!player.isDeactivated} style={miniButton}>Lift</button>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
