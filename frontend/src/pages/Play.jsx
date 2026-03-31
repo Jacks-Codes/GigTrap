@@ -331,7 +331,9 @@ export default function Play() {
   const declineRide = () => {
     if (!rideRequest) return;
     clearInterval(rideTimerRef.current);
-    socket.emit('ride:decline', { requestId: rideRequest.requestId });
+    socket.emit('ride:decline', { requestId: rideRequest.requestId }, (res) => {
+      if (res?.state) setState(res.state);
+    });
     setRideRequest(null);
   };
 
