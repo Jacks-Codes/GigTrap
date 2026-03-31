@@ -1,11 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSocket } from '../hooks/useSocket';
+import { useState } from 'react';
 
 export default function Join() {
-  const { socket, connected } = useSocket();
   const router = useRouter();
   const [code, setCode] = useState(() => {
     const codeFromUrl = typeof window !== 'undefined'
@@ -15,18 +13,30 @@ export default function Join() {
   });
   const [name, setName] = useState('');
   const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleJoin = () => {
-    if (!code || !name) return;
-    socket.emit('player:join', { code, name }, (res) => {
-      if (res.error) {
-        setError(res.error);
-      } else {
-        sessionStorage.setItem('gigtrap_player', JSON.stringify(res.state));
-        sessionStorage.setItem('gigtrap_room', code.toUpperCase());
-        router.push('/play');
-      }
+  const handleJoin = async () => {
+    if (!code || !name || submitting) return;
+    setSubmitting(true);
+    setError(null);
+
+    const res = await fetch('/api/player/join', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, name }),
     });
+
+    const data = await res.json();
+    setSubmitting(false);
+
+    if (!res.ok || data.error) {
+      setError(data.error || 'Unable to join room');
+      return;
+    }
+
+    sessionStorage.setItem('gigtrap_player', JSON.stringify(data.state));
+    sessionStorage.setItem('gigtrap_room', data.roomCode);
+    router.push('/play');
   };
 
   return (
@@ -71,10 +81,10 @@ export default function Join() {
 
         <button
           onClick={handleJoin}
-          disabled={!connected || !code || !name}
-          style={{ width: '100%', marginTop: 18, border: 'none', borderRadius: 18, background: connected && code && name ? '#111' : '#b6b7bb', color: '#fff', padding: '16px 18px', fontWeight: 700, fontSize: 16, cursor: connected && code && name ? 'pointer' : 'default' }}
+          disabled={!code || !name || submitting}
+          style={{ width: '100%', marginTop: 18, border: 'none', borderRadius: 18, background: code && name && !submitting ? '#111' : '#b6b7bb', color: '#fff', padding: '16px 18px', fontWeight: 700, fontSize: 16, cursor: code && name && !submitting ? 'pointer' : 'default' }}
         >
-          {connected ? 'Continue' : 'Connecting...'}
+          {submitting ? 'Joining...' : 'Continue'}
         </button>
       </div>
     </div>
