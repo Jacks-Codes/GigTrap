@@ -43,6 +43,7 @@ export default function Host() {
   const [phase, setPhase] = useState('lobby');
   const [log, setLog] = useState([]);
   const [copied, setCopied] = useState(false);
+  const [questionLoading, setQuestionLoading] = useState(false);
 
   const addLog = useCallback((message) => {
     setLog((prev) => [`[${new Date().toLocaleTimeString()}] ${message}`, ...prev].slice(0, 60));
@@ -156,6 +157,20 @@ export default function Host() {
     addLog(`Lifted ${playerId.slice(0, 6)}`);
   };
 
+  const triggerQuestion = async () => {
+    setQuestionLoading(true);
+    const res = await fetch('/api/host/trigger-question', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: roomCode, hostToken }),
+    });
+    const data = await res.json();
+    setQuestionLoading(false);
+    if (!res.ok || data.error) return;
+    setSnapshot(data.snapshot);
+    addLog(`Question: ${data.question?.prompt}`);
+  };
+
   const joinUrl = useMemo(
     () => (roomCode && typeof window !== 'undefined' ? `${window.location.origin}/join?code=${roomCode}` : ''),
     [roomCode]
@@ -247,6 +262,9 @@ export default function Host() {
                       {event.label}
                     </button>
                   ))}
+                  <button onClick={triggerQuestion} disabled={(phase !== 'running' && phase !== 'event') || questionLoading} style={secondaryButton}>
+                    {questionLoading ? 'Sending...' : 'Push Question'}
+                  </button>
                 </div>
                 <div style={{ padding: 18, borderBottom: '1px solid #ececec', fontSize: 12, color: '#6b6b6b', textTransform: 'uppercase', letterSpacing: 1 }}>
                   Live players

@@ -91,6 +91,7 @@ export default function Play() {
   const [surgeState, setSurgeState] = useState(null);
   const [ratingDropCard, setRatingDropCard] = useState(null);
   const [questOffer, setQuestOffer] = useState(null);
+  const [quizPrompt, setQuizPrompt] = useState(null);
   const [learnMoreOpen, setLearnMoreOpen] = useState(false);
   const [appealSubmitted, setAppealSubmitted] = useState(false);
   const [appealText, setAppealText] = useState('');
@@ -101,6 +102,7 @@ export default function Play() {
   const lastSurgeRef = useRef(null);
   const lastQuestRef = useRef(null);
   const lastRatingDropRef = useRef(null);
+  const lastQuizRef = useRef(null);
   const phase = payload?.phase || 'lobby';
 
   useEffect(() => {
@@ -192,6 +194,13 @@ export default function Play() {
         setRatingDisplay(data.player.rating);
       }
 
+      const quizEventId = data.player?.activeQuiz?.quizId || null;
+      if (quizEventId && quizEventId !== lastQuizRef.current) {
+        setQuizPrompt(data.player.activeQuiz);
+      } else if (!quizEventId) {
+        setQuizPrompt(null);
+      }
+
       setPayload(data);
       setSession(data.player);
       setClockOffsetMs((data.serverNow || Date.now()) - Date.now());
@@ -201,6 +210,7 @@ export default function Play() {
       lastSurgeRef.current = surgeEventId;
       lastQuestRef.current = questEventId;
       lastRatingDropRef.current = ratingEventId;
+      lastQuizRef.current = quizEventId;
     };
 
     poll();
@@ -237,13 +247,14 @@ export default function Play() {
 
   const applyResponseState = (statePayload) => {
     if (!statePayload?.player) return;
+    const serverNow = statePayload.serverNow ?? payload?.serverNow ?? tickNow;
     setPayload((prev) => ({
       ...prev,
       phase: statePayload.phase || prev?.phase || phase,
-      serverNow: statePayload.serverNow || prev?.serverNow || Date.now(),
+      serverNow,
     }));
     setSession(statePayload.player);
-    setClockOffsetMs((statePayload.serverNow || Date.now()) - Date.now());
+    setClockOffsetMs(serverNow - tickNow);
     sessionStorage.setItem('gigtrap_player', JSON.stringify(statePayload.player));
   };
 
@@ -317,6 +328,29 @@ export default function Play() {
     }
     setQuestOffer(null);
     applyResponseState(data.state);
+  };
+
+  const answerQuestion = async (selectedIndex) => {
+    if (!quizPrompt || submitting) return;
+    setSubmitting(true);
+    const res = await fetch(`/api/player/${session.playerId}/answer-question`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code: roomCode,
+        token: session.playerToken,
+        selectedIndex,
+      }),
+    });
+    const data = await res.json();
+    setSubmitting(false);
+    if (!res.ok || data.error) {
+      setToast(data.error || 'Could not submit answer');
+      return;
+    }
+    setQuizPrompt(null);
+    applyResponseState(data.state);
+    setToast(data.correct ? `Correct. +${formatMoney(data.reward)} and a rating bump.` : 'Wrong. Rating decreased.');
   };
 
   return (
@@ -427,6 +461,9 @@ export default function Play() {
                 <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, color: '#b4b7bd' }}>Passenger onboard</div>
                 <div style={{ fontSize: 28, fontWeight: 700, marginTop: 8 }}>{currentTrip.destination}</div>
                 <div style={{ color: '#b4b7bd', marginTop: 6 }}>{currentTrip.distance} • {formatMoney(currentTrip.fare)}</div>
+                <div style={{ marginTop: 14, height: 6, background: '#2a2a2d', borderRadius: 999, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${Math.min(100, ((currentTrip.durationMs - tripRemainingMs) / Math.max(1, currentTrip.durationMs)) * 100)}%`, background: '#fff', transition: 'width 0.2s linear' }} />
+                </div>
               </>
             )}
 
@@ -529,6 +566,22 @@ export default function Play() {
                 <button onClick={() => handleQuestResponse(false)} style={{ flex: 1, border: '1px solid #dbdce1', borderRadius: 16, background: '#fff', color: '#111', padding: '15px 12px', cursor: 'pointer', fontWeight: 700 }}>
                   Dismiss
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {quizPrompt && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(17,17,17,0.58)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 42 }}>
+            <div style={{ width: '100%', maxWidth: 390, background: '#fff', borderRadius: 30, padding: 24, boxShadow: '0 35px 60px rgba(17,17,17,0.2)' }}>
+              <div style={{ fontSize: 12, color: '#111', textTransform: 'uppercase', letterSpacing: 1 }}>Quick check-in</div>
+              <div style={{ fontSize: 30, lineHeight: 1.08, fontWeight: 700, marginTop: 10 }}>{quizPrompt.prompt}</div>
+              <div style={{ display: 'grid', gap: 10, marginTop: 20 }}>
+                {quizPrompt.options.map((option, index) => (
+                  <button key={option} onClick={() => answerQuestion(index)} style={{ width: '100%', border: '1px solid #dbdce1', borderRadius: 16, background: '#fff', color: '#111', padding: '15px 14px', cursor: 'pointer', fontWeight: 700, textAlign: 'left' }}>
+                    {option}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
