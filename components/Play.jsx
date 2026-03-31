@@ -83,6 +83,7 @@ function getStoredRoomCode() {
 export default function Play() {
   const [session, setSession] = useState(() => getStoredSession());
   const [payload, setPayload] = useState(null);
+  const [sessionError, setSessionError] = useState(null);
   const [clockOffsetMs, setClockOffsetMs] = useState(0);
   const [tickNow, setTickNow] = useState(() => Date.now());
   const [toast, setToast] = useState(null);
@@ -146,7 +147,14 @@ export default function Play() {
         cache: 'no-store',
       });
       const data = await res.json();
-      if (cancelled || !res.ok || data.error) return;
+      if (cancelled) return;
+      if (!res.ok || data.error) {
+        if (res.status === 404) {
+          setSessionError('Your session was lost. Rejoin the room.');
+          clearInterval(pollTimerRef.current);
+        }
+        return;
+      }
 
       const previousRequestId = previousRequestRef.current;
       const currentRequestId = data.player?.pendingRequest?.requestId || null;
@@ -560,6 +568,12 @@ export default function Play() {
         {toast && (
           <div style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: phase === 'running' && activeRequest ? 230 : 110, width: 'calc(100% - 36px)', maxWidth: 394, background: '#111', color: '#fff', borderRadius: 16, padding: '14px 16px', zIndex: 9, boxShadow: '0 18px 36px rgba(17,17,17,0.2)' }}>
             {toast}
+          </div>
+        )}
+
+        {sessionError && (
+          <div style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: 168, width: 'calc(100% - 36px)', maxWidth: 394, background: '#b42318', color: '#fff', borderRadius: 16, padding: '14px 16px', zIndex: 9, boxShadow: '0 18px 36px rgba(17,17,17,0.2)', fontWeight: 700 }}>
+            {sessionError}
           </div>
         )}
 
