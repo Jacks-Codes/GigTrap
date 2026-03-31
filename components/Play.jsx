@@ -222,6 +222,32 @@ export default function Play() {
     };
   }, [ratingDropCard, session?.playerId, session?.playerToken, submitting]);
 
+  const roomCode = getStoredRoomCode();
+  const currentRequest = session?.pendingRequest;
+  const currentTrip = session?.currentTrip;
+  const effectiveNow = tickNow + clockOffsetMs;
+  const expenses = parseFloat((((session?.simulatedMiles) || 0) * 0.18).toFixed(2));
+  const netEarnings = parseFloat((((session?.earnings) || 0) - expenses).toFixed(2));
+  const requestRemainingMs = currentRequest ? Math.max(0, currentRequest.expiresAt - effectiveNow) : 0;
+  const activeRequest = currentRequest && requestRemainingMs > 0 ? currentRequest : null;
+  const tripRemainingMs = currentTrip ? Math.max(0, currentTrip.realEndsAt - effectiveNow) : 0;
+  const tripRemainingSeconds = currentTrip
+    ? (tripRemainingMs / Math.max(1, currentTrip.durationMs || 1)) * currentTrip.durationSeconds
+    : 0;
+  const tone = (session?.effectiveHourlyRate || 0) < 10 ? 'danger' : (session?.effectiveHourlyRate || 0) < 16 ? 'warn' : 'default';
+  const ratingTone = topBarTone(ratingDropCard ? ratingDisplay : (session?.rating || 5));
+  const shownRating = (ratingDropCard ? ratingDisplay : (session?.rating || 5)).toFixed(2);
+
+  const clearLocalRequest = () => {
+    setSession((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, pendingRequest: null };
+      sessionStorage.setItem('gigtrap_player', JSON.stringify(next));
+      return next;
+    });
+    previousRequestRef.current = null;
+  };
+
   if (!session) {
     return (
       <p style={{ padding: 20 }}>
@@ -229,21 +255,6 @@ export default function Play() {
       </p>
     );
   }
-
-  const roomCode = getStoredRoomCode();
-  const currentRequest = session.pendingRequest;
-  const currentTrip = session.currentTrip;
-  const effectiveNow = tickNow + clockOffsetMs;
-  const expenses = parseFloat(((session.simulatedMiles || 0) * 0.18).toFixed(2));
-  const netEarnings = parseFloat(((session.earnings || 0) - expenses).toFixed(2));
-  const requestRemainingMs = currentRequest ? Math.max(0, currentRequest.expiresAt - effectiveNow) : 0;
-  const tripRemainingMs = currentTrip ? Math.max(0, currentTrip.realEndsAt - effectiveNow) : 0;
-  const tripRemainingSeconds = currentTrip
-    ? (tripRemainingMs / Math.max(1, currentTrip.durationMs || 1)) * currentTrip.durationSeconds
-    : 0;
-  const tone = session.effectiveHourlyRate < 10 ? 'danger' : session.effectiveHourlyRate < 16 ? 'warn' : 'default';
-  const ratingTone = topBarTone(ratingDropCard ? ratingDisplay : session.rating);
-  const shownRating = (ratingDropCard ? ratingDisplay : session.rating).toFixed(2);
 
   const applyResponseState = (statePayload) => {
     if (!statePayload?.player) return;
@@ -259,16 +270,16 @@ export default function Play() {
   };
 
   const acceptRide = async () => {
-    if (!currentRequest || submitting) return;
+    if (!activeRequest || submitting) return;
     setSubmitting(true);
-    previousRequestRef.current = null;
+    clearLocalRequest();
     const res = await fetch(`/api/player/${session.playerId}/accept`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         code: roomCode,
         token: session.playerToken,
-        requestId: currentRequest.requestId,
+        requestId: activeRequest.requestId,
       }),
     });
     const data = await res.json();
@@ -283,16 +294,16 @@ export default function Play() {
   };
 
   const declineRide = async (wasTimeout = false) => {
-    if (!currentRequest || submitting) return;
+    if (!activeRequest || submitting) return;
     setSubmitting(true);
-    previousRequestRef.current = null;
+    clearLocalRequest();
     const res = await fetch(`/api/player/${session.playerId}/decline`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         code: roomCode,
         token: session.playerToken,
-        requestId: currentRequest.requestId,
+        requestId: activeRequest.requestId,
         wasTimeout,
       }),
     });
@@ -300,7 +311,7 @@ export default function Play() {
     setSubmitting(false);
 
     if (!res.ok || data.error) {
-      setToast(data.error || 'Could not decline request');
+      setToast(data.error || (wasTimeout ? 'Request timed out' : 'Request expired'));
       return;
     }
 
@@ -506,16 +517,16 @@ export default function Play() {
           </div>
         </div>
 
-        {phase === 'running' && currentRequest && (
+        {phase === 'running' && activeRequest && (
           <div style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 430, bottom: 0, zIndex: 6, padding: '14px 18px 22px', background: 'linear-gradient(180deg, rgba(246,246,244,0) 0%, rgba(246,246,244,0.92) 22%, #f6f6f4 100%)' }}>
             <div style={{ background: '#fff', border: '1px solid #e0e0e3', borderRadius: 24, padding: 18, boxShadow: '0 18px 36px rgba(17,17,17,0.12)' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 16, alignItems: 'center' }}>
-                <CountdownArc durationMs={currentRequest.timeout} remainingMs={requestRemainingMs} />
+                <CountdownArc durationMs={activeRequest.timeout} remainingMs={requestRemainingMs} />
                 <div>
                   <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, color: '#6d6f76' }}>New request</div>
-                  <div style={{ fontSize: 28, fontWeight: 700, marginTop: 6 }}>{formatMoney(currentRequest.fare)}</div>
-                  <div style={{ color: '#5f6368', marginTop: 6 }}>{currentRequest.destination}</div>
-                  <div style={{ color: '#5f6368', marginTop: 4 }}>{currentRequest.distance} • {formatClock(currentRequest.durationSeconds)}</div>
+                  <div style={{ fontSize: 28, fontWeight: 700, marginTop: 6 }}>{formatMoney(activeRequest.fare)}</div>
+                  <div style={{ color: '#5f6368', marginTop: 6 }}>{activeRequest.destination}</div>
+                  <div style={{ color: '#5f6368', marginTop: 4 }}>{activeRequest.distance} • {formatClock(activeRequest.durationSeconds)}</div>
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 16 }}>
@@ -538,7 +549,7 @@ export default function Play() {
           </div>
         )}
 
-        {phase === 'running' && !currentTrip && !currentRequest && (
+        {phase === 'running' && !currentTrip && !activeRequest && (
           <div style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 430, bottom: 0, zIndex: 6, padding: '14px 18px 22px', background: 'linear-gradient(180deg, rgba(246,246,244,0) 0%, rgba(246,246,244,0.92) 22%, #f6f6f4 100%)' }}>
             <button onClick={handleGoOffline} style={{ width: '100%', border: 'none', borderRadius: 18, background: '#1f1f22', color: '#fff', padding: '16px 18px', fontSize: 16, fontWeight: 700 }}>
               Go offline
@@ -547,13 +558,13 @@ export default function Play() {
         )}
 
         {toast && (
-          <div style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: phase === 'running' && currentRequest ? 230 : 110, width: 'calc(100% - 36px)', maxWidth: 394, background: '#111', color: '#fff', borderRadius: 16, padding: '14px 16px', zIndex: 9, boxShadow: '0 18px 36px rgba(17,17,17,0.2)' }}>
+          <div style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: phase === 'running' && activeRequest ? 230 : 110, width: 'calc(100% - 36px)', maxWidth: 394, background: '#111', color: '#fff', borderRadius: 16, padding: '14px 16px', zIndex: 9, boxShadow: '0 18px 36px rgba(17,17,17,0.2)' }}>
             {toast}
           </div>
         )}
 
         {fareToast && (
-          <div style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: phase === 'running' && currentRequest ? 296 : 168, width: 'calc(100% - 36px)', maxWidth: 394, background: '#12a150', color: '#fff', borderRadius: 16, padding: '14px 16px', zIndex: 9, boxShadow: '0 18px 36px rgba(17,17,17,0.2)', fontWeight: 700 }}>
+          <div style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: phase === 'running' && activeRequest ? 296 : 168, width: 'calc(100% - 36px)', maxWidth: 394, background: '#12a150', color: '#fff', borderRadius: 16, padding: '14px 16px', zIndex: 9, boxShadow: '0 18px 36px rgba(17,17,17,0.2)', fontWeight: 700 }}>
             {fareToast}
           </div>
         )}
