@@ -91,6 +91,7 @@ export default function Play() {
   const [ratingDisplay, setRatingDisplay] = useState(() => getStoredSession()?.rating || 5);
   const [surgeState, setSurgeState] = useState(null);
   const [ratingDropCard, setRatingDropCard] = useState(null);
+  const [maintenanceFeeCard, setMaintenanceFeeCard] = useState(null);
   const [questOffer, setQuestOffer] = useState(null);
   const [quizPrompt, setQuizPrompt] = useState(null);
   const [learnMoreOpen, setLearnMoreOpen] = useState(false);
@@ -103,6 +104,7 @@ export default function Play() {
   const lastSurgeRef = useRef(null);
   const lastQuestRef = useRef(null);
   const lastRatingDropRef = useRef(null);
+  const lastMaintenanceFeeRef = useRef(null);
   const lastQuizRef = useRef(null);
   const phase = payload?.phase || 'lobby';
 
@@ -202,6 +204,11 @@ export default function Play() {
         setRatingDisplay(data.player.rating);
       }
 
+      const maintenanceEventId = data.player?.latestMaintenanceFee?.eventId || null;
+      if (maintenanceEventId && maintenanceEventId !== lastMaintenanceFeeRef.current) {
+        setMaintenanceFeeCard(data.player.latestMaintenanceFee);
+      }
+
       const quizEventId = data.player?.activeQuiz?.quizId || null;
       if (quizEventId && quizEventId !== lastQuizRef.current) {
         setQuizPrompt(data.player.activeQuiz);
@@ -218,6 +225,7 @@ export default function Play() {
       lastSurgeRef.current = surgeEventId;
       lastQuestRef.current = questEventId;
       lastRatingDropRef.current = ratingEventId;
+      lastMaintenanceFeeRef.current = maintenanceEventId;
       lastQuizRef.current = quizEventId;
     };
 
@@ -597,6 +605,25 @@ export default function Play() {
                   Contact Support
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {maintenanceFeeCard && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(17,17,17,0.62)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 41 }}>
+            <div style={{ width: '100%', maxWidth: 380, background: '#fff', color: '#111', borderRadius: 28, padding: 24, boxShadow: '0 35px 60px rgba(17,17,17,0.22)' }}>
+              <div style={{ fontSize: 12, color: '#b4321f', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700 }}>Vehicle alert</div>
+              <div style={{ fontSize: 28, lineHeight: 1.05, fontWeight: 700, marginTop: 10 }}>Maintenance fee charged</div>
+              <div style={{ marginTop: 14, fontSize: 44, fontWeight: 800, color: '#b4321f' }}>-{formatMoney(maintenanceFeeCard.amount)}</div>
+              <div style={{ color: '#5f6368', marginTop: 10, lineHeight: 1.45 }}>
+                {maintenanceFeeCard.reason}. The cost has been deducted from your earnings. Your account may show a negative balance until you complete more rides.
+              </div>
+              <button
+                onClick={() => setMaintenanceFeeCard(null)}
+                style={{ width: '100%', marginTop: 20, border: 'none', borderRadius: 16, background: '#111', color: '#fff', padding: '15px 12px', cursor: 'pointer', fontWeight: 700 }}
+              >
+                Acknowledge
+              </button>
             </div>
           </div>
         )}

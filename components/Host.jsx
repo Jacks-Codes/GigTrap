@@ -7,6 +7,7 @@ const EVENT_TYPES = [
   { key: 'rating_drop', label: 'Rating Drop' },
   { key: 'quest_offer', label: 'Quest Bonus Trap' },
   { key: 'deactivation_warning', label: 'Random Deactivation' },
+  { key: 'maintenance_fee', label: 'Maintenance Fee' },
 ];
 
 function formatQuest(quest) {
