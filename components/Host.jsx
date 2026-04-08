@@ -286,6 +286,7 @@ export default function Host() {
                         <th style={cellHead}>Miles</th>
                         <th style={cellHead}>Suppressed</th>
                         <th style={cellHead}>Quest</th>
+                        <th style={cellHead}>Promos</th>
                         <th style={cellHead}>Status</th>
                         <th style={cellHead}>Controls</th>
                       </tr>
@@ -305,6 +306,7 @@ export default function Host() {
                           <td style={cellBody}>{player.simulatedMiles?.toFixed ? player.simulatedMiles.toFixed(1) : player.simulatedMiles}</td>
                           <td style={cellBody}>{formatSuppression(player.suppressedUntil, serverNow)}</td>
                           <td style={cellBody}>{formatQuest(player.quest)}</td>
+                          <td style={cellBody}>{player.promosDismissed || 0}</td>
                           <td style={cellBody}>
                             {player.isDeactivated ? 'Locked out' : player.engagementState}
                             {player.hasPendingRequest ? ' • request' : ''}

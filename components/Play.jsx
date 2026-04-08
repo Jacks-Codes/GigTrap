@@ -100,6 +100,7 @@ export default function Play() {
   const [questOffer, setQuestOffer] = useState(null);
   const [quizPrompt, setQuizPrompt] = useState(null);
   const [maintenanceFeeModal, setMaintenanceFeeModal] = useState(null);
+  const [promoPopup, setPromoPopup] = useState(null);
   const [learnMoreOpen, setLearnMoreOpen] = useState(false);
   const [appealSubmitted, setAppealSubmitted] = useState(false);
   const [appealText, setAppealText] = useState('');
@@ -113,6 +114,7 @@ export default function Play() {
   const lastQuizRef = useRef(null);
   const lastMaintenanceFeeRef = useRef(null);
   const lastTierRef = useRef(null);
+  const lastPromoRef = useRef(null);
   const phase = payload?.phase || 'lobby';
 
   useEffect(() => {
@@ -218,6 +220,13 @@ export default function Play() {
         setMaintenanceFeeModal(null);
       }
 
+      const promoId = data.player?.activePromo?.promoId || null;
+      if (promoId && promoId !== lastPromoRef.current) {
+        setPromoPopup(data.player.activePromo);
+      } else if (!promoId) {
+        setPromoPopup(null);
+      }
+
       const currentTierIndex = data.player?.tierIndex ?? 0;
       if (lastTierRef.current !== null && currentTierIndex < lastTierRef.current) {
         setToast(`Tier demoted to ${data.player.tierName}. Your acceptance rate dropped below the threshold.`);
@@ -234,6 +243,7 @@ export default function Play() {
       lastRatingDropRef.current = ratingEventId;
       lastQuizRef.current = quizEventId;
       lastMaintenanceFeeRef.current = maintEventId;
+      lastPromoRef.current = promoId;
       lastTierRef.current = currentTierIndex;
     };
 
@@ -386,6 +396,22 @@ export default function Play() {
     setQuizPrompt(null);
     applyResponseState(data.state);
     setToast(data.correct ? `Correct. +${formatMoney(data.reward)} and a rating bump.` : 'Wrong. Rating decreased.');
+  };
+
+  const dismissPromo = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    const res = await fetch(`/api/player/${session.playerId}/dismiss-promo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: roomCode, token: session.playerToken }),
+    });
+    const data = await res.json();
+    setSubmitting(false);
+    if (!res.ok || data.error) return;
+    setPromoPopup(null);
+    lastPromoRef.current = null;
+    applyResponseState(data.state);
   };
 
   const acknowledgeMaintenanceFee = async () => {
@@ -723,6 +749,31 @@ export default function Play() {
                   </button>
                   {appealSubmitted && <div style={{ marginTop: 10, color: '#c8c8cc' }}>Your appeal has been received. You will be notified by email.</div>}
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {promoPopup && (
+          <div style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: phase === 'running' && activeRequest ? 230 : 90, width: 'calc(100% - 28px)', maxWidth: 410, zIndex: 35, animation: 'slideUp 0.3s ease-out forwards' }}>
+            <div style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)', color: '#fff', borderRadius: 22, padding: '18px 18px 16px', boxShadow: '0 22px 44px rgba(17,17,17,0.22)', position: 'relative' }}>
+              <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 1.2, color: '#8b95a5', marginBottom: 6 }}>Sponsored</div>
+              <div style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.3 }}>{promoPopup.message}</div>
+              <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+                <button
+                  onClick={dismissPromo}
+                  disabled={submitting}
+                  style={{ flex: 1, border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: '#8b95a5', borderRadius: 14, padding: '12px 12px', cursor: submitting ? 'default' : 'pointer', fontWeight: 700, fontSize: 13 }}
+                >
+                  No thanks
+                </button>
+                <button
+                  onClick={dismissPromo}
+                  disabled={submitting}
+                  style={{ flex: 1, border: 'none', background: '#3b82f6', color: '#fff', borderRadius: 14, padding: '12px 12px', cursor: submitting ? 'default' : 'pointer', fontWeight: 700, fontSize: 13 }}
+                >
+                  Learn more
+                </button>
               </div>
             </div>
           </div>
