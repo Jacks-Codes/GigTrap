@@ -3,6 +3,13 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
+const TIER_LEVELS = [
+  { name: 'Blue', minRides: 0, minAcceptance: 0, color: '#3b82f6' },
+  { name: 'Gold', minRides: 15, minAcceptance: 85, color: '#d4a017' },
+  { name: 'Platinum', minRides: 30, minAcceptance: 90, color: '#8b95a5' },
+  { name: 'Diamond', minRides: 50, minAcceptance: 95, color: '#60c5e8' },
+];
+
 function formatMoney(value) {
   return `$${Number(value || 0).toFixed(2)}`;
 }
@@ -105,6 +112,7 @@ export default function Play() {
   const lastRatingDropRef = useRef(null);
   const lastQuizRef = useRef(null);
   const lastMaintenanceFeeRef = useRef(null);
+  const lastTierRef = useRef(null);
   const phase = payload?.phase || 'lobby';
 
   useEffect(() => {
@@ -210,6 +218,11 @@ export default function Play() {
         setMaintenanceFeeModal(null);
       }
 
+      const currentTierIndex = data.player?.tierIndex ?? 0;
+      if (lastTierRef.current !== null && currentTierIndex < lastTierRef.current) {
+        setToast(`Tier demoted to ${data.player.tierName}. Your acceptance rate dropped below the threshold.`);
+      }
+
       setPayload(data);
       setSession(data.player);
       setClockOffsetMs((data.serverNow || Date.now()) - Date.now());
@@ -221,6 +234,7 @@ export default function Play() {
       lastRatingDropRef.current = ratingEventId;
       lastQuizRef.current = quizEventId;
       lastMaintenanceFeeRef.current = maintEventId;
+      lastTierRef.current = currentTierIndex;
     };
 
     poll();
@@ -440,6 +454,48 @@ export default function Play() {
             <StatPill label="Rating" value={`${shownRating} ★`} tone={ratingTone} />
             <StatPill label="Rate" value={`${formatMoney(session.effectiveHourlyRate || 0)}/hr`} tone={tone} />
           </div>
+
+          {(() => {
+            const tierIndex = session.tierIndex ?? 0;
+            const tier = TIER_LEVELS[tierIndex];
+            const nextTier = TIER_LEVELS[tierIndex + 1];
+            const ridesProgress = nextTier ? Math.min(100, (session.ridesCompleted / nextTier.minRides) * 100) : 100;
+            const acceptanceProgress = nextTier ? Math.min(100, (session.acceptanceRate / nextTier.minAcceptance) * 100) : 100;
+            return (
+              <div style={{ background: '#fff', border: '1px solid #e7e7ea', borderRadius: 22, padding: '14px 16px', marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: tier.color }} />
+                    <span style={{ fontSize: 14, fontWeight: 700 }}>{tier.name} Tier</span>
+                  </div>
+                  {nextTier && (
+                    <span style={{ fontSize: 11, color: '#70757a' }}>
+                      Next: {nextTier.name} ({nextTier.minRides} rides, {nextTier.minAcceptance}%)
+                    </span>
+                  )}
+                  {!nextTier && (
+                    <span style={{ fontSize: 11, color: '#70757a' }}>Max tier</span>
+                  )}
+                </div>
+                {nextTier && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+                    <div>
+                      <div style={{ fontSize: 10, color: '#70757a', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 }}>Rides {session.ridesCompleted}/{nextTier.minRides}</div>
+                      <div style={{ height: 6, borderRadius: 999, background: '#ededf0', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${ridesProgress}%`, background: tier.color, transition: 'width 0.4s ease' }} />
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: '#70757a', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 }}>Accept {session.acceptanceRate}%/{nextTier.minAcceptance}%</div>
+                      <div style={{ height: 6, borderRadius: 999, background: '#ededf0', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${acceptanceProgress}%`, background: acceptanceProgress >= 100 ? tier.color : '#d59d21', transition: 'width 0.4s ease' }} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {session.quest?.accepted && session.quest?.active && (
             <div style={{ background: '#0d8a4a', color: '#fff', borderRadius: 22, padding: '14px 16px', marginBottom: 12, boxShadow: '0 10px 20px rgba(13,138,74,0.18)' }}>
