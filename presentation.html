@@ -8,10 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400;1,700&family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <style>
 
-/* ─── reset ────────────────────────────────────────────── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-/* ─── tokens ────────────────────────────────────────────── */
 :root {
   --bg:    #0a0a0a;
   --text:  #e6e6e6;
@@ -26,15 +24,12 @@
 
 html, body {
   height: 100%; width: 100%;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--bg); color: var(--text);
   font-family: var(--sans);
-  overflow: hidden;
-  user-select: none;
+  overflow: hidden; user-select: none;
   -webkit-font-smoothing: antialiased;
 }
 
-/* ─── deck / slides ─────────────────────────────────────── */
 .deck { width: 100vw; height: 100vh; position: relative; }
 
 .slide {
@@ -45,7 +40,7 @@ html, body {
 }
 .slide.active { opacity: 1; pointer-events: all; }
 
-/* ─── top chrome ─────────────────────────────────────────── */
+/* chrome */
 .chrome {
   flex-shrink: 0;
   border-top: 1px solid var(--red);
@@ -53,303 +48,161 @@ html, body {
   padding: 16px 64px;
 }
 .chrome-label {
-  font-family: var(--mono);
-  font-size: 10px; letter-spacing: 0.22em;
-  text-transform: uppercase; color: var(--red);
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.22em; text-transform: uppercase; color: var(--red);
 }
 .chrome-num {
-  font-family: var(--mono);
-  font-size: 10px; letter-spacing: 0.1em;
-  color: var(--faint);
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.1em; color: var(--faint);
 }
 
-/* ─── body of slide ──────────────────────────────────────── */
+/* body */
 .body {
-  flex: 1;
-  display: flex; flex-direction: column;
+  flex: 1; display: flex; flex-direction: column;
   justify-content: center; align-items: center;
-  text-align: center;
-  padding: 40px 96px 80px;
+  text-align: center; padding: 40px 96px 80px;
 }
 
-/* ─── typography ─────────────────────────────────────────── */
+/* type */
 h1 {
-  font-family: var(--sans);
-  font-size: clamp(72px, 12vw, 148px);
-  font-weight: 700;
-  letter-spacing: -0.045em;
-  line-height: 0.9;
-  margin-bottom: 28px;
+  font-family: var(--sans); font-size: clamp(72px, 12vw, 148px);
+  font-weight: 700; letter-spacing: -0.045em; line-height: 0.9; margin-bottom: 28px;
 }
-
 h2 {
-  font-family: var(--sans);
-  font-size: clamp(32px, 4.8vw, 62px);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.0;
-  margin-bottom: 22px;
+  font-family: var(--sans); font-size: clamp(32px, 4.8vw, 62px);
+  font-weight: 700; letter-spacing: -0.03em; line-height: 1.0; margin-bottom: 22px;
 }
-
 .lead {
-  font-size: clamp(15px, 1.8vw, 18px);
-  font-weight: 300;
-  color: var(--dim);
-  max-width: 640px;
-  line-height: 1.7;
-  margin: 0 auto 24px;
+  font-size: clamp(15px, 1.8vw, 18px); font-weight: 300;
+  color: var(--dim); max-width: 640px; line-height: 1.7; margin: 0 auto 24px;
 }
 
-/* ─── horizontal rule ────────────────────────────────────── */
-hr {
-  border: none;
-  border-top: 1px solid var(--rule);
-  width: 100%; max-width: 640px;
-  margin: 24px auto;
-}
+/* rules */
+hr { border: none; border-top: 1px solid var(--rule); width: 100%; max-width: 640px; margin: 24px auto; }
 hr.accent { border-top-color: var(--red); width: 48px; }
 
-/* ─── pull quote ─────────────────────────────────────────── */
+/* pull quote */
 .pullquote {
-  font-family: var(--serif);
-  font-style: italic;
-  font-weight: 400;
-  font-size: clamp(18px, 2.4vw, 28px);
-  line-height: 1.5;
-  color: var(--text);
-  max-width: 680px;
-  margin: 0 auto 20px;
+  font-family: var(--serif); font-style: italic; font-weight: 400;
+  font-size: clamp(18px, 2.4vw, 28px); line-height: 1.5;
+  color: var(--text); max-width: 680px; margin: 0 auto 20px;
 }
 .pullquote::before { content: '\201C'; }
 .pullquote::after  { content: '\201D'; }
 .attribution {
-  font-family: var(--mono);
-  font-size: 10px; letter-spacing: 0.06em;
-  color: var(--faint);
-  margin-top: 14px;
-  max-width: 640px;
-  margin-left: auto; margin-right: auto;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em;
+  color: var(--faint); margin-top: 14px; max-width: 640px; margin-left: auto; margin-right: auto;
 }
 .attribution::before { content: '\2014\2009'; }
 
-/* ─── stats ──────────────────────────────────────────────── */
-.stats {
-  display: flex; gap: 72px;
-  justify-content: center; flex-wrap: wrap;
-  margin: 28px 0;
-}
-.stat {}
+/* stats */
+.stats { display: flex; gap: 72px; justify-content: center; flex-wrap: wrap; margin: 28px 0; }
 .stat-n {
-  font-family: var(--sans);
-  font-size: clamp(52px, 7.5vw, 96px);
-  font-weight: 700;
-  letter-spacing: -0.04em;
-  line-height: 1;
-  color: var(--text);
-  display: block;
+  font-family: var(--sans); font-size: clamp(52px, 7.5vw, 96px);
+  font-weight: 700; letter-spacing: -0.04em; line-height: 1;
+  color: var(--text); display: block;
 }
 .stat-n.hi { color: var(--red); }
 .stat-n.lo { color: var(--faint); }
 .stat-l {
-  font-family: var(--mono);
-  font-size: 10px; letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--dim);
-  max-width: 160px;
-  margin-top: 10px;
-  line-height: 1.6;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--dim);
+  max-width: 160px; margin-top: 10px; line-height: 1.6;
 }
 
-/* ─── manifest (mechanic list) ───────────────────────────── */
+/* manifest grid */
 .manifest {
-  width: 100%; max-width: 820px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  column-gap: 56px;
+  width: 100%; max-width: 820px; margin: 0 auto;
+  display: grid; grid-template-columns: 1fr 1fr; column-gap: 56px;
 }
-.entry {
-  padding: 14px 0;
-  border-top: 1px solid var(--rule);
-  text-align: left;
-}
+.entry { padding: 14px 0; border-top: 1px solid var(--rule); text-align: left; }
 .entry-head {
-  font-family: var(--mono);
-  font-size: 10px; font-weight: 500;
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
   letter-spacing: 0.18em; text-transform: uppercase;
   color: var(--red); margin-bottom: 6px;
 }
-.entry-body {
-  font-size: 13px; font-weight: 300;
+.entry-body { font-size: 13px; font-weight: 300; color: var(--dim); line-height: 1.6; }
+
+/* numbered list */
+.nlist { list-style: none; width: 100%; max-width: 680px; margin: 0 auto; }
+.nlist li {
+  padding: 14px 0; border-top: 1px solid var(--rule);
+  text-align: left; font-size: clamp(13px, 1.6vw, 16px); font-weight: 300;
   color: var(--dim); line-height: 1.6;
+  display: grid; grid-template-columns: auto 1fr; gap: 16px;
 }
+.nlist li strong { color: var(--text); font-weight: 500; }
+.li-n { font-family: var(--mono); font-size: 10px; color: var(--faint); padding-top: 4px; min-width: 18px; }
 
-/* ─── bullet list ────────────────────────────────────────── */
-.manifest-list {
-  list-style: none;
-  width: 100%; max-width: 680px;
-  margin: 0 auto;
-}
-.manifest-list li {
-  padding: 14px 0;
-  border-top: 1px solid var(--rule);
-  text-align: left;
-  font-size: clamp(13px, 1.6vw, 16px);
-  font-weight: 300;
-  color: var(--dim);
-  line-height: 1.6;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 16px;
-}
-.manifest-list li strong { color: var(--text); font-weight: 500; }
-.li-num {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--faint);
-  padding-top: 4px;
-  min-width: 18px;
-}
-
-/* ─── debrief table ──────────────────────────────────────── */
-.debrief {
-  width: 100%; max-width: 720px;
-  margin: 4px auto;
-}
+/* debrief */
+.debrief { width: 100%; max-width: 720px; margin: 4px auto; }
 .db-row {
-  display: grid;
-  grid-template-columns: 180px 1fr;
-  border-top: 1px solid var(--rule);
-  padding: 12px 0;
-  text-align: left;
-  gap: 24px;
+  display: grid; grid-template-columns: 180px 1fr;
+  border-top: 1px solid var(--rule); padding: 12px 0;
+  text-align: left; gap: 24px;
 }
 .db-mech {
-  font-family: var(--mono);
-  font-size: 10px; font-weight: 500;
-  letter-spacing: 0.16em; text-transform: uppercase;
-  color: var(--red);
-  padding-top: 1px;
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 0.16em; text-transform: uppercase; color: var(--red); padding-top: 1px;
 }
-.db-src {
-  font-size: 13px; font-weight: 300;
-  color: var(--dim);
-}
+.db-src { font-size: 13px; font-weight: 300; color: var(--dim); }
 
-/* ─── source list ────────────────────────────────────────── */
-.sources {
-  width: 100%; max-width: 700px;
-  margin: 0 auto;
-}
-.src-item {
-  padding: 16px 0;
-  border-top: 1px solid var(--rule);
-  text-align: left;
-}
-.src-name {
-  font-size: 14px; font-weight: 500;
-  color: var(--text); margin-bottom: 6px;
-}
-.src-detail {
-  font-family: var(--mono);
-  font-size: 10px; letter-spacing: 0.03em;
-  color: var(--faint); line-height: 1.8;
-}
+/* sources */
+.sources { width: 100%; max-width: 700px; margin: 0 auto; }
+.src-item { padding: 16px 0; border-top: 1px solid var(--rule); text-align: left; }
+.src-name { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+.src-detail { font-family: var(--mono); font-size: 10px; letter-spacing: 0.03em; color: var(--faint); line-height: 1.8; }
 
-/* ─── citation footer ────────────────────────────────────── */
+/* citation */
 .cit {
-  position: absolute;
-  bottom: 28px; left: 64px; right: 64px;
-  font-family: var(--mono);
-  font-size: 9px; letter-spacing: 0.06em;
-  color: var(--faint);
-  text-align: center;
+  position: absolute; bottom: 28px; left: 64px; right: 64px;
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.06em;
+  color: var(--faint); text-align: center;
 }
 
-/* ─── title slide ────────────────────────────────────────── */
-#s1 .body {
-  padding-bottom: 56px;
-  justify-content: flex-end;
-  align-items: flex-start;
-  text-align: left;
-}
-#s1 h1 {
-  font-size: clamp(80px, 14vw, 168px);
-  font-weight: 700;
-  letter-spacing: -0.048em;
-  line-height: 0.88;
-  margin-bottom: 0;
-}
-.title-rule {
-  width: 100%; border-top: 1px solid var(--rule);
-  margin: 28px 0;
-}
-.title-sub {
-  font-size: clamp(14px, 1.6vw, 17px);
-  font-weight: 300;
-  color: var(--dim);
-  max-width: 560px;
-  line-height: 1.7;
-  margin-bottom: 32px;
-}
-.nav-hint {
-  font-family: var(--mono);
-  font-size: 9px; letter-spacing: 0.18em;
-  text-transform: uppercase; color: var(--faint);
-}
+/* title slide */
+#s1 .body { padding-bottom: 56px; justify-content: flex-end; align-items: flex-start; text-align: left; }
+#s1 h1 { font-size: clamp(80px, 14vw, 168px); font-weight: 700; letter-spacing: -0.048em; line-height: 0.88; margin-bottom: 0; }
+.title-rule { width: 100%; border-top: 1px solid var(--rule); margin: 28px 0; }
+.title-sub { font-size: clamp(14px, 1.6vw, 17px); font-weight: 300; color: var(--dim); max-width: 560px; line-height: 1.7; margin-bottom: 32px; }
+.nav-hint { font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--faint); }
 
-/* ─── simulation slide (inverted) ───────────────────────── */
-#s9 {
-  background: #f0ece4;
-  color: #0a0a0a;
-}
-#s9 .chrome { border-top-color: #0a0a0a; }
-#s9 .chrome-label { color: #0a0a0a; }
-#s9 .chrome-num { color: #aaa; }
-#s9 h2 { color: #0a0a0a; }
-#s9 .lead { color: #555; }
-#s9 hr { border-top-color: #ccc; }
-#s9 hr.accent { border-top-color: #0a0a0a; }
-#s9 .qr-box {
-  width: 128px; height: 128px;
-  border: 1px solid #ccc;
+/* QR slide */
+.qr-box {
+  width: 190px; height: 190px;
+  border: 1px solid var(--faint);
   margin: 24px auto;
   display: flex; align-items: center; justify-content: center;
   font-family: var(--mono); font-size: 9px;
-  letter-spacing: 0.12em; text-transform: uppercase;
-  color: #aaa;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--faint); background: var(--bg);
 }
-#s9 .cit { color: #bbb; }
-#s9 .nav-hint { color: #999; }
 
-/* ─── source slide scrollable ────────────────────────────── */
-#s14 { overflow-y: auto; }
-#s14 .body { justify-content: flex-start; padding-top: 32px; }
+/* simulation slide (inverted) */
+#s10 { background: #f0ece4; color: #0a0a0a; }
+#s10 .chrome { border-top-color: #0a0a0a; }
+#s10 .chrome-label { color: #0a0a0a; }
+#s10 .chrome-num { color: #aaa; }
+#s10 h2 { color: #0a0a0a; }
+#s10 .lead { color: #555; }
+#s10 hr.accent { border-top-color: #0a0a0a; }
 
-/* ─── nav ────────────────────────────────────────────────── */
-.nav {
-  position: fixed; bottom: 22px; right: 40px;
-  display: flex; align-items: center; gap: 20px;
-  z-index: 200;
-}
+/* sources slide scrollable */
+#s15 { overflow-y: auto; }
+#s15 .body { justify-content: flex-start; padding-top: 32px; }
+
+/* nav */
+.nav { position: fixed; bottom: 22px; right: 40px; display: flex; align-items: center; gap: 20px; z-index: 200; }
 .nbtn {
   background: none; border: none; cursor: pointer;
-  font-family: var(--mono); font-size: 14px;
-  color: var(--faint); padding: 4px 2px;
+  font-family: var(--mono); font-size: 14px; color: var(--faint); padding: 4px 2px;
   transition: color 0.15s;
 }
 .nbtn:hover { color: var(--text); }
-.nctr {
-  font-family: var(--mono); font-size: 9px;
-  letter-spacing: 0.1em; color: var(--faint);
-}
+.nctr { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; color: var(--faint); }
 
-/* ─── progress ───────────────────────────────────────────── */
-.prog {
-  position: fixed; bottom: 0; left: 0;
-  height: 1px; background: var(--red);
-  transition: width 0.3s ease; z-index: 200;
-}
+/* progress */
+.prog { position: fixed; bottom: 0; left: 0; height: 1px; background: var(--red); transition: width 0.3s ease; z-index: 200; }
 
 </style>
 </head>
@@ -357,7 +210,7 @@ hr.accent { border-top-color: var(--red); width: 48px; }
 <div class="deck">
 
 
-<!-- ══════════════════════════════════ 01  TITLE ═══════════ -->
+<!-- ══════ 01  TITLE ════════════════════════════════════════════ -->
 <div class="slide active" id="s1">
   <div class="body">
     <h1>The<br>Gig<br>Trap</h1>
@@ -368,11 +221,27 @@ hr.accent { border-top-color: var(--red); width: 48px; }
 </div>
 
 
-<!-- ══════════════════════════════════ 02  THE PROMISE ═══════ -->
+<!-- ══════ 02  JOIN / QR ════════════════════════════════════════ -->
 <div class="slide" id="s2">
   <div class="chrome">
+    <span class="chrome-label">Join the Simulation</span>
+    <span class="chrome-num">02 / 15</span>
+  </div>
+  <div class="body">
+    <h2 style="font-size:clamp(28px,3.8vw,48px);">Scan to join before we start</h2>
+    <hr class="accent">
+    <p class="lead">Open on your phone and keep it handy. You'll be playing as an Uber driver during this presentation — we'll go live partway through.</p>
+    <div class="qr-box">QR CODE</div>
+    <p class="lead" style="font-size:13px; margin-bottom:0;">gigtrap.vercel.app &nbsp;·&nbsp; or use the QR above</p>
+  </div>
+</div>
+
+
+<!-- ══════ 03  THE PROMISE ══════════════════════════════════════ -->
+<div class="slide" id="s3">
+  <div class="chrome">
     <span class="chrome-label">The Promise</span>
-    <span class="chrome-num">02 / 14</span>
+    <span class="chrome-num">03 / 15</span>
   </div>
   <div class="body">
     <h2>"Be your own boss.<br>Set your own hours."</h2>
@@ -384,11 +253,11 @@ hr.accent { border-top-color: var(--red); width: 48px; }
 </div>
 
 
-<!-- ══════════════════════════════════ 03  SCALE ═════════════ -->
-<div class="slide" id="s3">
+<!-- ══════ 04  SCALE ════════════════════════════════════════════ -->
+<div class="slide" id="s4">
   <div class="chrome">
     <span class="chrome-label">The Scale</span>
-    <span class="chrome-num">03 / 14</span>
+    <span class="chrome-num">04 / 15</span>
   </div>
   <div class="body">
     <h2>This is not<br>a niche workforce</h2>
@@ -413,11 +282,11 @@ hr.accent { border-top-color: var(--red); width: 48px; }
 </div>
 
 
-<!-- ══════════════════════════════════ 04  THE MACHINERY ══════ -->
-<div class="slide" id="s4">
+<!-- ══════ 05  THE MACHINERY ════════════════════════════════════ -->
+<div class="slide" id="s5">
   <div class="chrome">
     <span class="chrome-label">The Machinery</span>
-    <span class="chrome-num">04 / 14</span>
+    <span class="chrome-num">05 / 15</span>
   </div>
   <div class="body">
     <h2>This is not<br>market forces.<br>This is design.</h2>
@@ -430,11 +299,11 @@ hr.accent { border-top-color: var(--red); width: 48px; }
 </div>
 
 
-<!-- ══════════════════════════════════ 05  MECHANICS ══════════ -->
-<div class="slide" id="s5">
+<!-- ══════ 06  MECHANISMS ════════════════════════════════════════ -->
+<div class="slide" id="s6">
   <div class="chrome">
     <span class="chrome-label">The Mechanisms</span>
-    <span class="chrome-num">05 / 14</span>
+    <span class="chrome-num">06 / 15</span>
   </div>
   <div class="body" style="padding-left:64px; padding-right:64px;">
     <h2 style="font-size:clamp(26px,3.2vw,42px); margin-bottom:28px;">The trap has many parts</h2>
@@ -453,7 +322,7 @@ hr.accent { border-top-color: var(--red); width: 48px; }
       </div>
       <div class="entry">
         <div class="entry-head">Ratings Pressure</div>
-        <div class="entry-body">A 4.6 average can trigger deactivation. Drivers cannot see individual ratings, cannot identify who rated them poorly, and cannot appeal algorithmic decisions.</div>
+        <div class="entry-body">A 4.6 average can trigger deactivation. Drivers cannot see individual ratings, identify who rated them poorly, or appeal algorithmic decisions.</div>
       </div>
       <div class="entry">
         <div class="entry-head">Deactivation</div>
@@ -469,11 +338,11 @@ hr.accent { border-top-color: var(--red); width: 48px; }
 </div>
 
 
-<!-- ══════════════════════════════════ 06  ALG WAGE DISC ══════ -->
-<div class="slide" id="s6">
+<!-- ══════ 07  ALGORITHMIC WAGE DISCRIMINATION ══════════════════ -->
+<div class="slide" id="s7">
   <div class="chrome">
     <span class="chrome-label">The Legal Framework</span>
-    <span class="chrome-num">06 / 14</span>
+    <span class="chrome-num">07 / 15</span>
   </div>
   <div class="body">
     <h2>Algorithmic<br>wage discrimination</h2>
@@ -487,11 +356,11 @@ hr.accent { border-top-color: var(--red); width: 48px; }
 </div>
 
 
-<!-- ══════════════════════════════════ 07  THE FLOOR ══════════ -->
-<div class="slide" id="s7">
+<!-- ══════ 08  THE INVISIBLE FLOOR ══════════════════════════════ -->
+<div class="slide" id="s8">
   <div class="chrome">
     <span class="chrome-label">The Invisible Floor</span>
-    <span class="chrome-num">07 / 14</span>
+    <span class="chrome-num">08 / 15</span>
   </div>
   <div class="body">
     <h2>~40% of time<br>on the job<br>goes unpaid</h2>
@@ -513,49 +382,48 @@ hr.accent { border-top-color: var(--red); width: 48px; }
 </div>
 
 
-<!-- ══════════════════════════════════ 08  WHO PAYS ═══════════ -->
-<div class="slide" id="s8">
+<!-- ══════ 09  WHO BEARS THE COST ══════════════════════════════ -->
+<div class="slide" id="s9">
   <div class="chrome">
     <span class="chrome-label">The Distribution of Harm</span>
-    <span class="chrome-num">08 / 14</span>
+    <span class="chrome-num">09 / 15</span>
   </div>
   <div class="body">
     <h2>The harm<br>is racialized</h2>
     <hr class="accent">
     <p class="lead" style="margin-bottom:20px;">Classification as "independent contractors" strips workers of protections built over decades of labor law. Nothing about the work changed — only what the company chose to call it.</p>
-    <ul class="manifest-list">
-      <li><span class="li-num">01</span><span>No employer-paid health insurance, unemployment insurance, or workers' compensation</span></li>
-      <li><span class="li-num">02</span><span>No guaranteed minimum wage — effective hourly pay can fall below federal poverty thresholds</span></li>
-      <li><span class="li-num">03</span><span>No right to organize under traditional labor law</span></li>
-      <li><span class="li-num">04</span><span>Deactivation without notice, severance, or meaningful appeal</span></li>
-      <li><span class="li-num">05</span><span>Algorithmic wage discrimination disproportionately targets the immigrant and minority workers who make up the majority of this workforce</span></li>
+    <ul class="nlist">
+      <li><span class="li-n">01</span><span>No employer-paid health insurance, unemployment insurance, or workers' compensation</span></li>
+      <li><span class="li-n">02</span><span>No guaranteed minimum wage — effective hourly pay can fall below federal poverty thresholds</span></li>
+      <li><span class="li-n">03</span><span>No right to organize under traditional labor law</span></li>
+      <li><span class="li-n">04</span><span>Deactivation without notice, severance, or meaningful appeal</span></li>
+      <li><span class="li-n">05</span><span>Algorithmic wage discrimination disproportionately targets the immigrant and minority workers who make up the majority of this workforce</span></li>
     </ul>
   </div>
   <div class="cit">HRW, "The Gig Trap," 2025 · Dubal, SSRN, 2023 (pp. 9–10)</div>
 </div>
 
 
-<!-- ══════════════════════════════════ 09  SIMULATION ═════════ -->
-<div class="slide" id="s9">
+<!-- ══════ 10  SIMULATION (inverted) ════════════════════════════ -->
+<div class="slide" id="s10">
   <div class="chrome">
     <span class="chrome-label">Live Simulation</span>
-    <span class="chrome-num">09 / 14</span>
+    <span class="chrome-num">10 / 15</span>
   </div>
   <div class="body">
     <h2>Now you're going<br>to feel it.</h2>
-    <hr class="accent" style="border-top-color:#0a0a0a;">
-    <p class="lead" style="color:#555;">Every mechanic you just read about is built into the simulation you're about to play. Pay attention to what you feel — not just what happens on screen.</p>
-    <div class="qr-box">QR CODE</div>
-    <p class="lead" style="font-size:13px; color:#777; margin-bottom:0;">Scan to join on your device. The simulation runs approximately 5 minutes.</p>
+    <hr class="accent">
+    <p class="lead">Every mechanic you just read about is built into the simulation you're about to play. Pay attention to what you feel — not just what happens on screen.</p>
+    <p class="lead" style="font-size:13px; margin-bottom:0; color:#777;">You should already be joined from slide 2. If not — scan the QR code and get in before we start.</p>
   </div>
 </div>
 
 
-<!-- ══════════════════════════════════ 10  DEBRIEF ════════════ -->
-<div class="slide" id="s10">
+<!-- ══════ 11  DEBRIEF ═══════════════════════════════════════════ -->
+<div class="slide" id="s11">
   <div class="chrome">
     <span class="chrome-label">Post-Simulation Debrief</span>
-    <span class="chrome-num">10 / 14</span>
+    <span class="chrome-num">11 / 15</span>
   </div>
   <div class="body">
     <h2>What you experienced<br>has a name</h2>
@@ -563,27 +431,27 @@ hr.accent { border-top-color: var(--red); width: 48px; }
     <div class="debrief">
       <div class="db-row">
         <span class="db-mech">Phantom Surge</span>
-        <span class="db-src">Documented: Scheiber, N.Y. Times, 2017 · HRW, 2025</span>
+        <span class="db-src">Scheiber, N.Y. Times, 2017 · HRW, 2025</span>
       </div>
       <div class="db-row">
         <span class="db-mech">Quest Trap</span>
-        <span class="db-src">Documented: Scheiber, N.Y. Times, 2017 · HRW, 2025</span>
+        <span class="db-src">Scheiber, N.Y. Times, 2017 · HRW, 2025</span>
       </div>
       <div class="db-row">
         <span class="db-mech">Forward Dispatch</span>
-        <span class="db-src">Documented: Scheiber, N.Y. Times, 2017</span>
+        <span class="db-src">Scheiber, N.Y. Times, 2017</span>
       </div>
       <div class="db-row">
         <span class="db-mech">Ratings Roulette</span>
-        <span class="db-src">Documented: HRW, 2025</span>
+        <span class="db-src">HRW, 2025</span>
       </div>
       <div class="db-row">
         <span class="db-mech">Wage Suppression</span>
-        <span class="db-src">Documented: Dubal, SSRN, 2023 · HRW, 2025</span>
+        <span class="db-src">Dubal, SSRN, 2023 · HRW, 2025</span>
       </div>
       <div class="db-row">
         <span class="db-mech">Deactivation</span>
-        <span class="db-src">Documented: HRW, 2025</span>
+        <span class="db-src">HRW, 2025</span>
       </div>
     </div>
     <p class="lead" style="font-size:14px; margin-top:20px;">The frustration you felt was engineered. For millions of workers, there's no one to hand the phone back to — and no reset button.</p>
@@ -592,11 +460,11 @@ hr.accent { border-top-color: var(--red); width: 48px; }
 </div>
 
 
-<!-- ══════════════════════════════════ 11  PROP 22 ════════════ -->
-<div class="slide" id="s11">
+<!-- ══════ 12  PROP 22 ══════════════════════════════════════════ -->
+<div class="slide" id="s12">
   <div class="chrome">
     <span class="chrome-label">Regulatory Capture</span>
-    <span class="chrome-num">11 / 14</span>
+    <span class="chrome-num">12 / 15</span>
   </div>
   <div class="body">
     <h2>The platform<br>wrote the law</h2>
@@ -617,11 +485,11 @@ hr.accent { border-top-color: var(--red); width: 48px; }
 </div>
 
 
-<!-- ══════════════════════════════════ 12  PREVIEW ════════════ -->
-<div class="slide" id="s12">
+<!-- ══════ 13  THIS IS A PREVIEW ════════════════════════════════ -->
+<div class="slide" id="s13">
   <div class="chrome">
     <span class="chrome-label">The Broader Threat</span>
-    <span class="chrome-num">12 / 14</span>
+    <span class="chrome-num">13 / 15</span>
   </div>
   <div class="body">
     <h2>This is a preview</h2>
@@ -634,32 +502,32 @@ hr.accent { border-top-color: var(--red); width: 48px; }
 </div>
 
 
-<!-- ══════════════════════════════════ 13  WHAT CHANGES ══════ -->
-<div class="slide" id="s13">
+<!-- ══════ 14  WHAT CHANGES ══════════════════════════════════════ -->
+<div class="slide" id="s14">
   <div class="chrome">
     <span class="chrome-label">The Path Forward</span>
-    <span class="chrome-num">13 / 14</span>
+    <span class="chrome-num">14 / 15</span>
   </div>
   <div class="body">
     <h2 style="font-size:clamp(28px,3.8vw,48px);">What would actually change things</h2>
     <hr class="accent">
-    <ul class="manifest-list">
-      <li><span class="li-num">01</span><span><strong>Reclassify workers as employees</strong> — restore minimum wage, overtime, unemployment insurance, and the right to organize (HRW, 2025)</span></li>
-      <li><span class="li-num">02</span><span><strong>Algorithmic transparency</strong> — workers have a right to understand the systems determining their pay, including how wages are calculated (HRW, 2025; Dubal, 2023)</span></li>
-      <li><span class="li-num">03</span><span><strong>Ban algorithmic wage discrimination</strong> — Dubal proposes a non-waivable legal prohibition targeting the practice directly (Dubal, 2023)</span></li>
-      <li><span class="li-num">04</span><span><strong>Universal social protection</strong> — decouple healthcare, workers' comp, and unemployment from employment classification (HRW, 2025)</span></li>
-      <li><span class="li-num">05</span><span><strong>Federal enforcement</strong> — DOL, FTC, and OSHA regulation of platform labor practices, not just classification status (HRW, 2025)</span></li>
+    <ul class="nlist">
+      <li><span class="li-n">01</span><span><strong>Reclassify workers as employees</strong> — restore minimum wage, overtime, unemployment insurance, and the right to organize (HRW, 2025)</span></li>
+      <li><span class="li-n">02</span><span><strong>Algorithmic transparency</strong> — workers have a right to understand the systems determining their pay, including how wages are calculated (HRW, 2025; Dubal, 2023)</span></li>
+      <li><span class="li-n">03</span><span><strong>Ban algorithmic wage discrimination</strong> — Dubal proposes a non-waivable legal prohibition targeting the practice directly (Dubal, 2023)</span></li>
+      <li><span class="li-n">04</span><span><strong>Universal social protection</strong> — decouple healthcare, workers' comp, and unemployment from employment classification (HRW, 2025)</span></li>
+      <li><span class="li-n">05</span><span><strong>Federal enforcement</strong> — DOL, FTC, and OSHA regulation of platform labor practices, not just classification status (HRW, 2025)</span></li>
     </ul>
   </div>
   <div class="cit">HRW, "The Gig Trap," 2025 (Recommendations) · Dubal, SSRN, 2023 (Part III)</div>
 </div>
 
 
-<!-- ══════════════════════════════════ 14  SOURCES ════════════ -->
-<div class="slide" id="s14">
+<!-- ══════ 15  SOURCES ═══════════════════════════════════════════ -->
+<div class="slide" id="s15">
   <div class="chrome">
     <span class="chrome-label">Sources</span>
-    <span class="chrome-num">14 / 14</span>
+    <span class="chrome-num">15 / 15</span>
   </div>
   <div class="body">
     <div class="sources">
@@ -690,10 +558,9 @@ hr.accent { border-top-color: var(--red); width: 48px; }
 
 </div><!-- /deck -->
 
-<!-- ── navigation ── -->
 <div class="nav">
   <button class="nbtn" onclick="go(-1)">←</button>
-  <span class="nctr" id="nctr">01 / 14</span>
+  <span class="nctr" id="nctr">01 / 15</span>
   <button class="nbtn" onclick="go(1)">→</button>
 </div>
 <div class="prog" id="prog"></div>
