@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Gig Trap</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400;1,700&family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <style>
@@ -231,7 +232,7 @@ hr.accent { border-top-color: var(--red); width: 48px; }
     <h2 style="font-size:clamp(28px,3.8vw,48px);">Scan to join before we start</h2>
     <hr class="accent">
     <p class="lead">Open on your phone and keep it handy. You'll be playing as an Uber driver during this presentation — we'll go live partway through.</p>
-    <div class="qr-box">QR CODE</div>
+    <div class="qr-box" id="qr-code"></div>
     <p class="lead" style="font-size:13px; margin-bottom:0;">gigtrap.vercel.app &nbsp;·&nbsp; or use the QR above</p>
   </div>
 </div>
@@ -580,6 +581,15 @@ hr.accent { border-top-color: var(--red); width: 48px; }
   });
 
   show(0);
+
+  new QRCode(document.getElementById('qr-code'), {
+    text: 'https://gigtrap.vercel.app',
+    width: 180,
+    height: 180,
+    colorDark: '#e6e6e6',
+    colorLight: '#0a0a0a',
+    correctLevel: QRCode.CorrectLevel.M
+  });
 </script>
 </body>
 </html>
