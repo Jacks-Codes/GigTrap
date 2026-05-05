@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Gig Trap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400;1,700&family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+
+/* ─── reset ────────────────────────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ─── tokens ────────────────────────────────────────────── */
+:root {
+  --bg:    #0a0a0a;
+  --text:  #e6e6e6;
+  --dim:   #777;
+  --faint: #333;
+  --rule:  #222;
+  --red:   #d63c20;
+  --sans:  'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --mono:  'SF Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+html, body {
+  height: 100%; width: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  overflow: hidden;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── deck / slides ─────────────────────────────────────── */
+.deck { width: 100vw; height: 100vh; position: relative; }
+
+.slide {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.slide.active { opacity: 1; pointer-events: all; }
+
+/* ─── top chrome ─────────────────────────────────────────── */
+.chrome {
+  flex-shrink: 0;
+  border-top: 1px solid var(--red);
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 64px;
+}
+.chrome-label {
+  font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.22em;
+  text-transform: uppercase; color: var(--red);
+}
+.chrome-num {
+  font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.1em;
+  color: var(--faint);
+}
+
+/* ─── body of slide ──────────────────────────────────────── */
+.body {
+  flex: 1;
+  display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  text-align: center;
+  padding: 40px 96px 80px;
+}
+
+/* ─── typography ─────────────────────────────────────────── */
+h1 {
+  font-family: var(--sans);
+  font-size: clamp(72px, 12vw, 148px);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 0.9;
+  margin-bottom: 28px;
+}
+
+h2 {
+  font-family: var(--sans);
+  font-size: clamp(32px, 4.8vw, 62px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.0;
+  margin-bottom: 22px;
+}
+
+.lead {
+  font-size: clamp(15px, 1.8vw, 18px);
+  font-weight: 300;
+  color: var(--dim);
+  max-width: 640px;
+  line-height: 1.7;
+  margin: 0 auto 24px;
+}
+
+/* ─── horizontal rule ────────────────────────────────────── */
+hr {
+  border: none;
+  border-top: 1px solid var(--rule);
+  width: 100%; max-width: 640px;
+  margin: 24px auto;
+}
+hr.accent { border-top-color: var(--red); width: 48px; }
+
+/* ─── pull quote ─────────────────────────────────────────── */
+.pullquote {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(18px, 2.4vw, 28px);
+  line-height: 1.5;
+  color: var(--text);
+  max-width: 680px;
+  margin: 0 auto 20px;
+}
+.pullquote::before { content: '\201C'; }
+.pullquote::after  { content: '\201D'; }
+.attribution {
+  font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.06em;
+  color: var(--faint);
+  margin-top: 14px;
+  max-width: 640px;
+  margin-left: auto; margin-right: auto;
+}
+.attribution::before { content: '\2014\2009'; }
+
+/* ─── stats ──────────────────────────────────────────────── */
+.stats {
+  display: flex; gap: 72px;
+  justify-content: center; flex-wrap: wrap;
+  margin: 28px 0;
+}
+.stat {}
+.stat-n {
+  font-family: var(--sans);
+  font-size: clamp(52px, 7.5vw, 96px);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--text);
+  display: block;
+}
+.stat-n.hi { color: var(--red); }
+.stat-n.lo { color: var(--faint); }
+.stat-l {
+  font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+  max-width: 160px;
+  margin-top: 10px;
+  line-height: 1.6;
+}
+
+/* ─── manifest (mechanic list) ───────────────────────────── */
+.manifest {
+  width: 100%; max-width: 820px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 56px;
+}
+.entry {
+  padding: 14px 0;
+  border-top: 1px solid var(--rule);
+  text-align: left;
+}
+.entry-head {
+  font-family: var(--mono);
+  font-size: 10px; font-weight: 500;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--red); margin-bottom: 6px;
+}
+.entry-body {
+  font-size: 13px; font-weight: 300;
+  color: var(--dim); line-height: 1.6;
+}
+
+/* ─── bullet list ────────────────────────────────────────── */
+.manifest-list {
+  list-style: none;
+  width: 100%; max-width: 680px;
+  margin: 0 auto;
+}
+.manifest-list li {
+  padding: 14px 0;
+  border-top: 1px solid var(--rule);
+  text-align: left;
+  font-size: clamp(13px, 1.6vw, 16px);
+  font-weight: 300;
+  color: var(--dim);
+  line-height: 1.6;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16px;
+}
+.manifest-list li strong { color: var(--text); font-weight: 500; }
+.li-num {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--faint);
+  padding-top: 4px;
+  min-width: 18px;
+}
+
+/* ─── debrief table ──────────────────────────────────────── */
+.debrief {
+  width: 100%; max-width: 720px;
+  margin: 4px auto;
+}
+.db-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  border-top: 1px solid var(--rule);
+  padding: 12px 0;
+  text-align: left;
+  gap: 24px;
+}
+.db-mech {
+  font-family: var(--mono);
+  font-size: 10px; font-weight: 500;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--red);
+  padding-top: 1px;
+}
+.db-src {
+  font-size: 13px; font-weight: 300;
+  color: var(--dim);
+}
+
+/* ─── source list ────────────────────────────────────────── */
+.sources {
+  width: 100%; max-width: 700px;
+  margin: 0 auto;
+}
+.src-item {
+  padding: 16px 0;
+  border-top: 1px solid var(--rule);
+  text-align: left;
+}
+.src-name {
+  font-size: 14px; font-weight: 500;
+  color: var(--text); margin-bottom: 6px;
+}
+.src-detail {
+  font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.03em;
+  color: var(--faint); line-height: 1.8;
+}
+
+/* ─── citation footer ────────────────────────────────────── */
+.cit {
+  position: absolute;
+  bottom: 28px; left: 64px; right: 64px;
+  font-family: var(--mono);
+  font-size: 9px; letter-spacing: 0.06em;
+  color: var(--faint);
+  text-align: center;
+}
+
+/* ─── title slide ────────────────────────────────────────── */
+#s1 .body {
+  padding-bottom: 56px;
+  justify-content: flex-end;
+  align-items: flex-start;
+  text-align: left;
+}
+#s1 h1 {
+  font-size: clamp(80px, 14vw, 168px);
+  font-weight: 700;
+  letter-spacing: -0.048em;
+  line-height: 0.88;
+  margin-bottom: 0;
+}
+.title-rule {
+  width: 100%; border-top: 1px solid var(--rule);
+  margin: 28px 0;
+}
+.title-sub {
+  font-size: clamp(14px, 1.6vw, 17px);
+  font-weight: 300;
+  color: var(--dim);
+  max-width: 560px;
+  line-height: 1.7;
+  margin-bottom: 32px;
+}
+.nav-hint {
+  font-family: var(--mono);
+  font-size: 9px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--faint);
+}
+
+/* ─── simulation slide (inverted) ───────────────────────── */
+#s9 {
+  background: #f0ece4;
+  color: #0a0a0a;
+}
+#s9 .chrome { border-top-color: #0a0a0a; }
+#s9 .chrome-label { color: #0a0a0a; }
+#s9 .chrome-num { color: #aaa; }
+#s9 h2 { color: #0a0a0a; }
+#s9 .lead { color: #555; }
+#s9 hr { border-top-color: #ccc; }
+#s9 hr.accent { border-top-color: #0a0a0a; }
+#s9 .qr-box {
+  width: 128px; height: 128px;
+  border: 1px solid #ccc;
+  margin: 24px auto;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: #aaa;
+}
+#s9 .cit { color: #bbb; }
+#s9 .nav-hint { color: #999; }
+
+/* ─── source slide scrollable ────────────────────────────── */
+#s14 { overflow-y: auto; }
+#s14 .body { justify-content: flex-start; padding-top: 32px; }
+
+/* ─── nav ────────────────────────────────────────────────── */
+.nav {
+  position: fixed; bottom: 22px; right: 40px;
+  display: flex; align-items: center; gap: 20px;
+  z-index: 200;
+}
+.nbtn {
+  background: none; border: none; cursor: pointer;
+  font-family: var(--mono); font-size: 14px;
+  color: var(--faint); padding: 4px 2px;
+  transition: color 0.15s;
+}
+.nbtn:hover { color: var(--text); }
+.nctr {
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.1em; color: var(--faint);
+}
+
+/* ─── progress ───────────────────────────────────────────── */
+.prog {
+  position: fixed; bottom: 0; left: 0;
+  height: 1px; background: var(--red);
+  transition: width 0.3s ease; z-index: 200;
+}
+
+</style>
+</head>
+<body>
+<div class="deck">
+
+
+<!-- ══════════════════════════════════ 01  TITLE ═══════════ -->
+<div class="slide active" id="s1">
+  <div class="body">
+    <h1>The<br>Gig<br>Trap</h1>
+    <div class="title-rule"></div>
+    <p class="title-sub">How platform companies use behavioral science, algorithmic wage control, and manufactured urgency to keep workers working — and why this is bigger than ride-hail.</p>
+    <span class="nav-hint">arrow keys or spacebar to navigate</span>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════ 02  THE PROMISE ═══════ -->
+<div class="slide" id="s2">
+  <div class="chrome">
+    <span class="chrome-label">The Promise</span>
+    <span class="chrome-num">02 / 14</span>
+  </div>
+  <div class="body">
+    <h2>"Be your own boss.<br>Set your own hours."</h2>
+    <hr class="accent">
+    <p class="lead">The gig economy marketed itself as a marketplace of autonomous, flexible work. Uber, Lyft, DoorDash, and their peers attracted millions with promises of independence from the rigid 9-to-5.</p>
+    <p class="lead" style="font-size:14px; margin-top:0;">What they didn't advertise: a sophisticated infrastructure of behavioral control, designed by hundreds of social scientists and data engineers, built underneath the app interface.</p>
+  </div>
+  <div class="cit">HRW, "The Gig Trap," 2025 · Dubal, "On Algorithmic Wage Discrimination," SSRN, 2023</div>
+</div>
+
+
+<!-- ══════════════════════════════════ 03  SCALE ═════════════ -->
+<div class="slide" id="s3">
+  <div class="chrome">
+    <span class="chrome-label">The Scale</span>
+    <span class="chrome-num">03 / 14</span>
+  </div>
+  <div class="body">
+    <h2>This is not<br>a niche workforce</h2>
+    <hr class="accent">
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-n hi">~1.6M</span>
+        <span class="stat-l">Texans working for digital labor platforms</span>
+      </div>
+      <div class="stat">
+        <span class="stat-n">69%</span>
+        <span class="stat-l">of Lyft's U.S. workforce identifies as a racial minority</span>
+      </div>
+      <div class="stat">
+        <span class="stat-n">78%</span>
+        <span class="stat-l">of SF Bay Area Uber/Lyft drivers are immigrants or people of color</span>
+      </div>
+    </div>
+    <p class="lead" style="font-size:14px; margin-top:0;">The people absorbing the risk of these systems are not a representative sample. They are disproportionately those with the fewest legal protections and the fewest economic alternatives.</p>
+  </div>
+  <div class="cit">HRW, "The Gig Trap," 2025 · Dubal, SSRN, 2023 (p. 9, citing Benner et al., UC Santa Cruz, 2019)</div>
+</div>
+
+
+<!-- ══════════════════════════════════ 04  THE MACHINERY ══════ -->
+<div class="slide" id="s4">
+  <div class="chrome">
+    <span class="chrome-label">The Machinery</span>
+    <span class="chrome-num">04 / 14</span>
+  </div>
+  <div class="body">
+    <h2>This is not<br>market forces.<br>This is design.</h2>
+    <hr class="accent">
+    <p class="pullquote">Uber is engaged in an extraordinary behind-the-scenes experiment in behavioral science to manipulate [drivers] in the service of its corporate growth.</p>
+    <p class="attribution">Noam Scheiber · N.Y. Times · "How Uber Uses Psychological Tricks to Push Its Drivers' Buttons" · Apr. 2, 2017</p>
+    <p class="lead" style="font-size:14px; margin-top:24px;">The company employed hundreds of social scientists and data scientists, experimenting with video game mechanics, graphical cues, and noncash rewards — designed to extend driver hours at times and locations less profitable for the driver.</p>
+  </div>
+  <div class="cit">Scheiber, N.Y. Times, 2017 · Dubal, SSRN, 2023 (pp. 16–17, citing Scheiber)</div>
+</div>
+
+
+<!-- ══════════════════════════════════ 05  MECHANICS ══════════ -->
+<div class="slide" id="s5">
+  <div class="chrome">
+    <span class="chrome-label">The Mechanisms</span>
+    <span class="chrome-num">05 / 14</span>
+  </div>
+  <div class="body" style="padding-left:64px; padding-right:64px;">
+    <h2 style="font-size:clamp(26px,3.2vw,42px); margin-bottom:28px;">The trap has many parts</h2>
+    <div class="manifest">
+      <div class="entry">
+        <div class="entry-head">Surge Pricing</div>
+        <div class="entry-body">Phantom surge zones appear on the map near drivers, then shift once they relocate — providing free repositioning at the driver's cost.</div>
+      </div>
+      <div class="entry">
+        <div class="entry-head">Quest Bonuses</div>
+        <div class="entry-body">Tiered bonus thresholds — "earn $20 for 10 trips, $40 for 15" — calibrated to push drivers past their planned hours toward payouts that rarely hold up mathematically.</div>
+      </div>
+      <div class="entry">
+        <div class="entry-head">Forward Dispatch</div>
+        <div class="entry-body">A new ride loads automatically before the current one ends, eliminating the natural pause where a driver would decide whether to keep going or stop.</div>
+      </div>
+      <div class="entry">
+        <div class="entry-head">Ratings Pressure</div>
+        <div class="entry-body">A 4.6 average can trigger deactivation. Drivers cannot see individual ratings, cannot identify who rated them poorly, and cannot appeal algorithmic decisions.</div>
+      </div>
+      <div class="entry">
+        <div class="entry-head">Deactivation</div>
+        <div class="entry-body">Workers are removed from the platform without notice, severance, or meaningful appeal. The algorithm decides. There is no manager to call.</div>
+      </div>
+      <div class="entry">
+        <div class="entry-head">Renewal Pressure</div>
+        <div class="entry-body">Time-limited offers and "going offline" warnings manufacture urgency — accept the next ride now or lose an opportunity that may not return.</div>
+      </div>
+    </div>
+  </div>
+  <div class="cit">HRW, "The Gig Trap," 2025 · Scheiber, N.Y. Times, 2017</div>
+</div>
+
+
+<!-- ══════════════════════════════════ 06  ALG WAGE DISC ══════ -->
+<div class="slide" id="s6">
+  <div class="chrome">
+    <span class="chrome-label">The Legal Framework</span>
+    <span class="chrome-num">06 / 14</span>
+  </div>
+  <div class="body">
+    <h2>Algorithmic<br>wage discrimination</h2>
+    <hr class="accent">
+    <p class="lead">Two drivers. Same area. Same hour. Same work. Different pay. This isn't an error or market variation — it is the product, as designed.</p>
+    <p class="pullquote">Workers are paid different hourly wages — calculated with ever-changing formulas using granular data on location, behavior, demand, and supply — for broadly similar work.</p>
+    <p class="attribution">Veena Dubal · "On Algorithmic Wage Discrimination" · SSRN, Jan. 2023, p. 5</p>
+    <p class="lead" style="font-size:14px; margin-top:20px;">The company knows exactly what each worker will accept. The worker can only guess why they earned what they earned. The asymmetry of information is total — and deliberate.</p>
+  </div>
+  <div class="cit">Dubal, V. "On Algorithmic Wage Discrimination." SSRN #4337775, Jan. 25, 2023. Columbia Law Review (forthcoming).</div>
+</div>
+
+
+<!-- ══════════════════════════════════ 07  THE FLOOR ══════════ -->
+<div class="slide" id="s7">
+  <div class="chrome">
+    <span class="chrome-label">The Invisible Floor</span>
+    <span class="chrome-num">07 / 14</span>
+  </div>
+  <div class="body">
+    <h2>~40% of time<br>on the job<br>goes unpaid</h2>
+    <hr class="accent">
+    <p class="lead">"Non-passenger platform time" — hours spent waiting between fares — is not compensated. Platforms intentionally keep more drivers on the road than needed, guaranteeing coverage at zero cost.</p>
+    <div class="stats" style="gap:80px; margin:20px 0;">
+      <div class="stat">
+        <span class="stat-n hi">$9.74</span>
+        <span class="stat-l">median hourly pay — city-commissioned study, Seattle (Parrott & Reich, 2020)</span>
+      </div>
+      <div class="stat">
+        <span class="stat-n lo">$23</span>
+        <span class="stat-l">Uber-sponsored study, same city, same data — excluding vehicle operating costs</span>
+      </div>
+    </div>
+    <p class="lead" style="font-size:13px; margin-top:0;">Same dataset. The difference: whether to count the cost of owning and operating the vehicle the driver is legally required to provide.</p>
+  </div>
+  <div class="cit">Dubal, SSRN, 2023 (pp. 13–14) · Parrott & Reich, UC Berkeley, July 2020 · Hyman, Cornell, 2020</div>
+</div>
+
+
+<!-- ══════════════════════════════════ 08  WHO PAYS ═══════════ -->
+<div class="slide" id="s8">
+  <div class="chrome">
+    <span class="chrome-label">The Distribution of Harm</span>
+    <span class="chrome-num">08 / 14</span>
+  </div>
+  <div class="body">
+    <h2>The harm<br>is racialized</h2>
+    <hr class="accent">
+    <p class="lead" style="margin-bottom:20px;">Classification as "independent contractors" strips workers of protections built over decades of labor law. Nothing about the work changed — only what the company chose to call it.</p>
+    <ul class="manifest-list">
+      <li><span class="li-num">01</span><span>No employer-paid health insurance, unemployment insurance, or workers' compensation</span></li>
+      <li><span class="li-num">02</span><span>No guaranteed minimum wage — effective hourly pay can fall below federal poverty thresholds</span></li>
+      <li><span class="li-num">03</span><span>No right to organize under traditional labor law</span></li>
+      <li><span class="li-num">04</span><span>Deactivation without notice, severance, or meaningful appeal</span></li>
+      <li><span class="li-num">05</span><span>Algorithmic wage discrimination disproportionately targets the immigrant and minority workers who make up the majority of this workforce</span></li>
+    </ul>
+  </div>
+  <div class="cit">HRW, "The Gig Trap," 2025 · Dubal, SSRN, 2023 (pp. 9–10)</div>
+</div>
+
+
+<!-- ══════════════════════════════════ 09  SIMULATION ═════════ -->
+<div class="slide" id="s9">
+  <div class="chrome">
+    <span class="chrome-label">Live Simulation</span>
+    <span class="chrome-num">09 / 14</span>
+  </div>
+  <div class="body">
+    <h2>Now you're going<br>to feel it.</h2>
+    <hr class="accent" style="border-top-color:#0a0a0a;">
+    <p class="lead" style="color:#555;">Every mechanic you just read about is built into the simulation you're about to play. Pay attention to what you feel — not just what happens on screen.</p>
+    <div class="qr-box">QR CODE</div>
+    <p class="lead" style="font-size:13px; color:#777; margin-bottom:0;">Scan to join on your device. The simulation runs approximately 5 minutes.</p>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════ 10  DEBRIEF ════════════ -->
+<div class="slide" id="s10">
+  <div class="chrome">
+    <span class="chrome-label">Post-Simulation Debrief</span>
+    <span class="chrome-num">10 / 14</span>
+  </div>
+  <div class="body">
+    <h2>What you experienced<br>has a name</h2>
+    <hr class="accent">
+    <div class="debrief">
+      <div class="db-row">
+        <span class="db-mech">Phantom Surge</span>
+        <span class="db-src">Documented: Scheiber, N.Y. Times, 2017 · HRW, 2025</span>
+      </div>
+      <div class="db-row">
+        <span class="db-mech">Quest Trap</span>
+        <span class="db-src">Documented: Scheiber, N.Y. Times, 2017 · HRW, 2025</span>
+      </div>
+      <div class="db-row">
+        <span class="db-mech">Forward Dispatch</span>
+        <span class="db-src">Documented: Scheiber, N.Y. Times, 2017</span>
+      </div>
+      <div class="db-row">
+        <span class="db-mech">Ratings Roulette</span>
+        <span class="db-src">Documented: HRW, 2025</span>
+      </div>
+      <div class="db-row">
+        <span class="db-mech">Wage Suppression</span>
+        <span class="db-src">Documented: Dubal, SSRN, 2023 · HRW, 2025</span>
+      </div>
+      <div class="db-row">
+        <span class="db-mech">Deactivation</span>
+        <span class="db-src">Documented: HRW, 2025</span>
+      </div>
+    </div>
+    <p class="lead" style="font-size:14px; margin-top:20px;">The frustration you felt was engineered. For millions of workers, there's no one to hand the phone back to — and no reset button.</p>
+  </div>
+  <div class="cit">HRW, 2025 · Scheiber, 2017 · Dubal, 2023</div>
+</div>
+
+
+<!-- ══════════════════════════════════ 11  PROP 22 ════════════ -->
+<div class="slide" id="s11">
+  <div class="chrome">
+    <span class="chrome-label">Regulatory Capture</span>
+    <span class="chrome-num">11 / 14</span>
+  </div>
+  <div class="body">
+    <h2>The platform<br>wrote the law</h2>
+    <hr class="accent">
+    <div class="stats" style="gap:80px;">
+      <div class="stat">
+        <span class="stat-n hi">$223M</span>
+        <span class="stat-l">spent by Uber, Lyft, DoorDash & Instacart to pass Prop. 22 in California</span>
+      </div>
+      <div class="stat">
+        <span class="stat-n">9+</span>
+        <span class="stat-l">U.S. states where algorithmic wage discrimination is now legally sanctioned</span>
+      </div>
+    </div>
+    <p class="lead" style="margin-top:0;">Proposition 22 legalized not paying drivers for waiting time — the most expensive ballot campaign in California history, funded entirely by the platforms it benefited. Several tactics used in the campaign were widely documented as deceptive.</p>
+  </div>
+  <div class="cit">Dubal, SSRN, 2023 (p. 18) · HRW, "The Gig Trap," 2025</div>
+</div>
+
+
+<!-- ══════════════════════════════════ 12  PREVIEW ════════════ -->
+<div class="slide" id="s12">
+  <div class="chrome">
+    <span class="chrome-label">The Broader Threat</span>
+    <span class="chrome-num">12 / 14</span>
+  </div>
+  <div class="body">
+    <h2>This is a preview</h2>
+    <hr class="accent">
+    <p class="pullquote">Uber drivers' experiences should be understood not as a unique feature of contract work, but as a preview of a new form of wage setting for large employers.</p>
+    <p class="attribution">Zephyr Teachout · Algorithmic Personalized Wages · cited in Dubal, SSRN, 2023, p. 11</p>
+    <p class="lead" style="font-size:14px; margin-top:24px;">Algorithmic wage discrimination has already spread into healthcare staffing, restaurant work, and retail logistics. If it is not addressed directly, it will become the default model for low-wage labor across the entire economy.</p>
+  </div>
+  <div class="cit">Dubal, SSRN, 2023 (p. 11) · HRW, "The Gig Trap," 2025</div>
+</div>
+
+
+<!-- ══════════════════════════════════ 13  WHAT CHANGES ══════ -->
+<div class="slide" id="s13">
+  <div class="chrome">
+    <span class="chrome-label">The Path Forward</span>
+    <span class="chrome-num">13 / 14</span>
+  </div>
+  <div class="body">
+    <h2 style="font-size:clamp(28px,3.8vw,48px);">What would actually change things</h2>
+    <hr class="accent">
+    <ul class="manifest-list">
+      <li><span class="li-num">01</span><span><strong>Reclassify workers as employees</strong> — restore minimum wage, overtime, unemployment insurance, and the right to organize (HRW, 2025)</span></li>
+      <li><span class="li-num">02</span><span><strong>Algorithmic transparency</strong> — workers have a right to understand the systems determining their pay, including how wages are calculated (HRW, 2025; Dubal, 2023)</span></li>
+      <li><span class="li-num">03</span><span><strong>Ban algorithmic wage discrimination</strong> — Dubal proposes a non-waivable legal prohibition targeting the practice directly (Dubal, 2023)</span></li>
+      <li><span class="li-num">04</span><span><strong>Universal social protection</strong> — decouple healthcare, workers' comp, and unemployment from employment classification (HRW, 2025)</span></li>
+      <li><span class="li-num">05</span><span><strong>Federal enforcement</strong> — DOL, FTC, and OSHA regulation of platform labor practices, not just classification status (HRW, 2025)</span></li>
+    </ul>
+  </div>
+  <div class="cit">HRW, "The Gig Trap," 2025 (Recommendations) · Dubal, SSRN, 2023 (Part III)</div>
+</div>
+
+
+<!-- ══════════════════════════════════ 14  SOURCES ════════════ -->
+<div class="slide" id="s14">
+  <div class="chrome">
+    <span class="chrome-label">Sources</span>
+    <span class="chrome-num">14 / 14</span>
+  </div>
+  <div class="body">
+    <div class="sources">
+      <div class="src-item">
+        <div class="src-name">Human Rights Watch — "The Gig Trap: Algorithmic, Wage and Labor Exploitation in Platform Work in the US"</div>
+        <div class="src-detail">Simet, L. & Toh, A. · HRW Economic Justice & Rights Division · 2025<br>Survey and interview research with platform workers in Texas · hrw.org</div>
+      </div>
+      <div class="src-item">
+        <div class="src-name">Veena Dubal — "On Algorithmic Wage Discrimination"</div>
+        <div class="src-detail">SSRN Draft #4337775 · Jan. 25, 2023 · Columbia Law Review (forthcoming)<br>UC College of Law, San Francisco · Six-year ethnographic study, SF Bay Area ride-hail workers</div>
+      </div>
+      <div class="src-item">
+        <div class="src-name">Noam Scheiber — "How Uber Uses Psychological Tricks to Push Its Drivers' Buttons"</div>
+        <div class="src-detail">The New York Times · April 2, 2017<br>Investigation into Uber's behavioral science program and driver manipulation practices</div>
+      </div>
+      <div class="src-item">
+        <div class="src-name">James A. Parrott & Michael Reich — "A Minimum Compensation Standard for Seattle TNC Drivers"</div>
+        <div class="src-detail">UC Berkeley IRLE · July 2020 · City of Seattle commissioned<br>Found median driver earnings of $9.74/hr after accounting for all vehicle expenses</div>
+      </div>
+      <div class="src-item">
+        <div class="src-name">Global Gig Economy: How Transport Platform Companies Adapt to Regulatory Challenges</div>
+        <div class="src-detail">Comparative analysis of regulatory responses to platform labor practices across international jurisdictions</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+</div><!-- /deck -->
+
+<!-- ── navigation ── -->
+<div class="nav">
+  <button class="nbtn" onclick="go(-1)">←</button>
+  <span class="nctr" id="nctr">01 / 14</span>
+  <button class="nbtn" onclick="go(1)">→</button>
+</div>
+<div class="prog" id="prog"></div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  const total = slides.length;
+  let cur = 0;
+
+  function show(n) {
+    slides[cur].classList.remove('active');
+    cur = ((n % total) + total) % total;
+    slides[cur].classList.add('active');
+    const num = String(cur + 1).padStart(2, '0');
+    document.getElementById('nctr').textContent = `${num} / ${String(total).padStart(2, '0')}`;
+    document.getElementById('prog').style.width = `${((cur + 1) / total) * 100}%`;
+  }
+
+  function go(d) { show(cur + d); }
+
+  document.addEventListener('keydown', e => {
+    if (['ArrowRight', 'ArrowDown', ' '].includes(e.key)) { e.preventDefault(); go(1); }
+    else if (['ArrowLeft', 'ArrowUp'].includes(e.key))    { e.preventDefault(); go(-1); }
+  });
+
+  let tx = null;
+  document.addEventListener('touchstart', e => tx = e.touches[0].clientX);
+  document.addEventListener('touchend',   e => {
+    if (tx === null) return;
+    const dx = tx - e.changedTouches[0].clientX;
+    if (Math.abs(dx) > 50) go(dx > 0 ? 1 : -1);
+    tx = null;
+  });
+
+  show(0);
+</script>
+</body>
+</html>

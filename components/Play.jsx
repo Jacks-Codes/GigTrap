@@ -70,6 +70,29 @@ function StatPill({ label, value, tone = 'default' }) {
   );
 }
 
+function FakeRideshareBackdrop() {
+  return (
+    <div aria-hidden="true" style={{ position: 'fixed', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(145deg, #f7f7f2 0%, #eef3ed 42%, #f1efe9 100%)' }} />
+      <div style={{ position: 'absolute', inset: 0, opacity: 0.42, backgroundImage: 'linear-gradient(rgba(17,17,17,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(17,17,17,0.06) 1px, transparent 1px)', backgroundSize: '42px 42px', transform: 'rotate(-2deg) scale(1.08)' }} />
+      <div style={{ position: 'absolute', top: 54, right: -72, width: 330, height: 330, border: '34px solid rgba(17,17,17,0.08)', borderRadius: 52, transform: 'rotate(-14deg)' }} />
+      <div style={{ position: 'absolute', top: 86, right: -24, color: 'rgba(17,17,17,0.1)', fontSize: 92, lineHeight: 0.86, fontWeight: 900, textTransform: 'uppercase', transform: 'rotate(-14deg)', fontFamily: 'Arial Black, Impact, system-ui, sans-serif' }}>
+        U8ER
+      </div>
+      <div style={{ position: 'absolute', left: -34, bottom: 132, width: 168, height: 168, background: 'rgba(17,17,17,0.07)', borderRadius: 38, transform: 'rotate(17deg)', display: 'grid', placeItems: 'center' }}>
+        <div style={{ width: 84, height: 84, border: '18px solid rgba(17,17,17,0.16)', borderTopColor: 'transparent', borderRadius: 24 }} />
+      </div>
+      <div style={{ position: 'absolute', left: '8%', top: '26%', color: 'rgba(17,17,17,0.08)', fontSize: 42, fontWeight: 900, textTransform: 'uppercase', transform: 'rotate(8deg)' }}>
+        UBR
+      </div>
+      <div style={{ position: 'absolute', right: '10%', bottom: '11%', color: 'rgba(13,138,74,0.14)', fontSize: 46, fontWeight: 900, textTransform: 'uppercase', transform: 'rotate(-8deg)' }}>
+        UBRPOOL
+      </div>
+      <div style={{ position: 'absolute', left: '13%', bottom: '5%', right: '13%', height: 9, borderRadius: 999, background: 'linear-gradient(90deg, rgba(17,17,17,0), rgba(17,17,17,0.12), rgba(13,138,74,0.18), rgba(17,17,17,0))' }} />
+    </div>
+  );
+}
+
 function topBarTone(rating) {
   if (rating < 4.6) return 'danger';
   if (rating < 4.8) return 'warn';
@@ -90,6 +113,7 @@ function getStoredRoomCode() {
 export default function Play() {
   const [session, setSession] = useState(() => getStoredSession());
   const [payload, setPayload] = useState(null);
+  const [sessionError, setSessionError] = useState(null);
   const [clockOffsetMs, setClockOffsetMs] = useState(0);
   const [tickNow, setTickNow] = useState(() => Date.now());
   const [toast, setToast] = useState(null);
@@ -97,6 +121,7 @@ export default function Play() {
   const [ratingDisplay, setRatingDisplay] = useState(() => getStoredSession()?.rating || 5);
   const [surgeState, setSurgeState] = useState(null);
   const [ratingDropCard, setRatingDropCard] = useState(null);
+  const [maintenanceFeeCard, setMaintenanceFeeCard] = useState(null);
   const [questOffer, setQuestOffer] = useState(null);
   const [quizPrompt, setQuizPrompt] = useState(null);
   const [maintenanceFeeModal, setMaintenanceFeeModal] = useState(null);
@@ -111,6 +136,7 @@ export default function Play() {
   const lastSurgeRef = useRef(null);
   const lastQuestRef = useRef(null);
   const lastRatingDropRef = useRef(null);
+  const lastMaintenanceFeeCardRef = useRef(null);
   const lastQuizRef = useRef(null);
   const lastMaintenanceFeeRef = useRef(null);
   const lastTierRef = useRef(null);
@@ -158,7 +184,14 @@ export default function Play() {
         cache: 'no-store',
       });
       const data = await res.json();
-      if (cancelled || !res.ok || data.error) return;
+      if (cancelled) return;
+      if (!res.ok || data.error) {
+        if (res.status === 404) {
+          setSessionError('Your session was lost. Rejoin the room.');
+          clearInterval(pollTimerRef.current);
+        }
+        return;
+      }
 
       const previousRequestId = previousRequestRef.current;
       const currentRequestId = data.player?.pendingRequest?.requestId || null;
@@ -206,6 +239,11 @@ export default function Play() {
         setRatingDisplay(data.player.rating);
       }
 
+      const maintenanceEventId = data.player?.latestMaintenanceFee?.eventId || null;
+      if (maintenanceEventId && maintenanceEventId !== lastMaintenanceFeeCardRef.current) {
+        setMaintenanceFeeCard(data.player.latestMaintenanceFee);
+      }
+
       const quizEventId = data.player?.activeQuiz?.quizId || null;
       if (quizEventId && quizEventId !== lastQuizRef.current) {
         setQuizPrompt(data.player.activeQuiz);
@@ -241,6 +279,7 @@ export default function Play() {
       lastSurgeRef.current = surgeEventId;
       lastQuestRef.current = questEventId;
       lastRatingDropRef.current = ratingEventId;
+      lastMaintenanceFeeCardRef.current = maintenanceEventId;
       lastQuizRef.current = quizEventId;
       lastMaintenanceFeeRef.current = maintEventId;
       lastPromoRef.current = promoId;
@@ -455,6 +494,7 @@ export default function Play() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f6f6f4', color: '#111', position: 'relative', overflow: 'hidden' }}>
+      <FakeRideshareBackdrop />
       <div style={{ position: 'relative', zIndex: 1, maxWidth: 430, margin: '0 auto', minHeight: '100vh', background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)', boxShadow: '0 0 0 1px rgba(255,255,255,0.3)' }}>
         <div style={{ padding: '14px 18px 10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, fontSize: 13, fontWeight: 700 }}>
@@ -671,6 +711,12 @@ export default function Play() {
           </div>
         )}
 
+        {sessionError && (
+          <div style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: 168, width: 'calc(100% - 36px)', maxWidth: 394, background: '#b42318', color: '#fff', borderRadius: 16, padding: '14px 16px', zIndex: 9, boxShadow: '0 18px 36px rgba(17,17,17,0.2)', fontWeight: 700 }}>
+            {sessionError}
+          </div>
+        )}
+
         {fareToast && (
           <div style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: phase === 'running' && activeRequest ? 296 : 168, width: 'calc(100% - 36px)', maxWidth: 394, background: '#12a150', color: '#fff', borderRadius: 16, padding: '14px 16px', zIndex: 9, boxShadow: '0 18px 36px rgba(17,17,17,0.2)', fontWeight: 700 }}>
             {fareToast}
@@ -691,6 +737,25 @@ export default function Play() {
                   Contact Support
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {maintenanceFeeCard && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(17,17,17,0.62)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 41 }}>
+            <div style={{ width: '100%', maxWidth: 380, background: '#fff', color: '#111', borderRadius: 28, padding: 24, boxShadow: '0 35px 60px rgba(17,17,17,0.22)' }}>
+              <div style={{ fontSize: 12, color: '#b4321f', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700 }}>Vehicle alert</div>
+              <div style={{ fontSize: 28, lineHeight: 1.05, fontWeight: 700, marginTop: 10 }}>Maintenance fee charged</div>
+              <div style={{ marginTop: 14, fontSize: 44, fontWeight: 800, color: '#b4321f' }}>-{formatMoney(maintenanceFeeCard.amount)}</div>
+              <div style={{ color: '#5f6368', marginTop: 10, lineHeight: 1.45 }}>
+                {maintenanceFeeCard.reason}. The cost has been deducted from your earnings. Your account may show a negative balance until you complete more rides.
+              </div>
+              <button
+                onClick={() => setMaintenanceFeeCard(null)}
+                style={{ width: '100%', marginTop: 20, border: 'none', borderRadius: 16, background: '#111', color: '#fff', padding: '15px 12px', cursor: 'pointer', fontWeight: 700 }}
+              >
+                Acknowledge
+              </button>
             </div>
           </div>
         )}
